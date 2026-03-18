@@ -3,12 +3,12 @@
 import numpy
 
 
-def build_vertex_effective_h(view, mapper, value_dof_offsets=(0, 3, 6)):
+def build_vertex_effective_h(view, mapper, value_dof_offsets=(0, 3, 6), measure="diameter"):
     """
-    Average a simple edge-based characteristic length onto global vertex dofs.
+    Average a characteristic element length onto the global vertex-value dofs.
 
-    This matches the usage pattern in the Hermite spaces, where the mapper
-    indices at offsets (0,3,6) correspond to the three vertex-value dofs.
+    The Hermite VEM spaces in this package use the value-dof mapper entries at
+    offsets (0, 3, 6) to identify the three vertex blocks.
     """
     values = numpy.zeros(len(mapper), dtype=float)
     counts = numpy.zeros(len(mapper), dtype=float)
@@ -21,11 +21,16 @@ def build_vertex_effective_h(view, mapper, value_dof_offsets=(0, 3, 6)):
         e12 = numpy.linalg.norm(verts[2] - verts[1])
         e20 = numpy.linalg.norm(verts[0] - verts[2])
 
-        local_h = numpy.array([
-            0.5 * (e01 + e20),
-            0.5 * (e01 + e12),
-            0.5 * (e12 + e20),
-        ], dtype=float)
+        if measure == "diameter":
+            local_h = numpy.array([max(e01, e12, e20)] * 3, dtype=float)
+        elif measure == "adjacent_edge_average":
+            local_h = numpy.array([
+                0.5 * (e01 + e20),
+                0.5 * (e01 + e12),
+                0.5 * (e12 + e20),
+            ], dtype=float)
+        else:
+            raise ValueError(f"Unknown measure '{measure}'.")
 
         idx = mapper(e)
         for lv, offset in enumerate(value_dof_offsets):

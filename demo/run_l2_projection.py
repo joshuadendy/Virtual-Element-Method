@@ -5,14 +5,19 @@ from dune.grid import cartesianDomain, gridFunction
 from VEM.assembly import assemble_l2_projection
 from VEM import compare_projectors, error
 from VEM import (
+    LinearLagrangeSpace,
+    QuadraticLagrangeSpace,
+    CubicHermiteSpace,
     CubicHermiteMappedVEMSpace,
-    CubicHermitePhysicalVEMSpace
+    CubicHermitePhysicalVEMSpace,
+    LinearLagrangeMappedVEMSpace,
+    LinearLagrangePhysicalVEMSpace
 )
 
 # We will use a triangular grid for this exercise
 from dune.alugrid import aluConformGrid
 
-def run_projection_demo(space_factory=CubicHermiteMappedVEMSpace, refinements=3,
+def run_projection_demo(spaces=[CubicHermiteMappedVEMSpace], refinements=3,
                         plot=True, compare_mapped=True):
 
     def build_demo_view(nx=10, ny=10):
@@ -40,35 +45,45 @@ def run_projection_demo(space_factory=CubicHermiteMappedVEMSpace, refinements=3,
 
         return uh
 
-    _, view = build_demo_view()
-    u = make_test_function(view)
+    for space_type in spaces:
+        print("Testing space:", space_type.__name__)
 
-    if plot:
-        u.plot(level=3)
-
-    old_pde_error = None
-    for _ in range(refinements):
-        space = space_factory(view)
-        quad_order = 4 if space.localDofs == 3 else 6
-
-        print("number of elements:", view.size(0), "number of dofs:", len(space.mapper))
-
-        rhs, matrix = assemble_l2_projection(space, u, quad_order=quad_order)
-        dofs = scipy.sparse.linalg.spsolve(matrix, rhs)
-        uh = make_projected_function(view, space, dofs)
+        _, view = build_demo_view()
+        u = make_test_function(view)
 
         if plot:
-            uh.plot(level=1)
+            u.plot(level=3)
 
-        err = error(view, u, uh)
-        if old_pde_error is not None:
-            eoc = [numpy.log(old_e / e) / numpy.log(2) for old_e, e in zip(old_pde_error, err)]
-        else:
-            eoc = None
-        print("  pde problem:", err, eoc)
-        old_pde_error = err
+        old_pde_error = None
+        for _ in range(refinements):
+            space = space_type(view)
+            quad_order = 4 if space.localDofs == 3 else 6
 
-        view.hierarchicalGrid.globalRefine(2)
+            print(
+                "number of elements:", view.size(0),
+                "number of dofs:", len(space.mapper)
+            )
+
+            rhs, matrix = assemble_l2_projection(space,
+                                                 u,
+                                                 quad_order=quad_order)
+            dofs = scipy.sparse.linalg.spsolve(matrix, rhs)
+            uh = make_projected_function(view, space, dofs)
+
+            if plot:
+                uh.plot(level=1)
+
+            err = error(view, u, uh)
+            if old_pde_error is not None:
+                eoc = [numpy.log(old_e / e) / numpy.log(2)
+                       for old_e, e in zip(old_pde_error, err)]
+            else:
+                eoc = None
+            print("  pde problem:", err, eoc)
+            old_pde_error = err
+
+            view.hierarchicalGrid.globalRefine(2)
+        print()
 
     if compare_mapped:
         _, compare_view = build_demo_view()
@@ -86,4 +101,16 @@ def run_projection_demo(space_factory=CubicHermiteMappedVEMSpace, refinements=3,
 
 
 if __name__ == "__main__":
-    run_projection_demo(space_factory=CubicHermiteMappedVEMSpace, plot=False)
+    run_projection_demo(
+        spaces=[
+            LinearLagrangeSpace,
+            QuadraticLagrangeSpace,
+            CubicHermiteSpace,
+            CubicHermiteMappedVEMSpace,
+            CubicHermitePhysicalVEMSpace,
+            LinearLagrangeMappedVEMSpace,
+            LinearLagrangePhysicalVEMSpace
+        ],
+        compare_mapped=False,
+        refinements=3,
+        plot=False)
