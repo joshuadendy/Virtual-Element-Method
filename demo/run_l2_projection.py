@@ -2,8 +2,9 @@ import numpy
 import scipy.sparse
 import scipy.sparse.linalg
 from dune.grid import cartesianDomain, gridFunction
-from VEM_package import assemble_l2_projection, compare_projectors, error
-from VEM_package import (
+from VEM.assembly import assemble_l2_projection
+from VEM import compare_projectors, error
+from VEM import (
     CubicHermiteMappedVEMSpace,
     CubicHermitePhysicalVEMSpace
 )
