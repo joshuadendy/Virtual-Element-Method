@@ -15,5 +15,8 @@ class SpaceBase:
     def evaluateLocal(self, x):
         raise NotImplementedError
 
+    def evaluateLocalGradient(self, x):
+        raise NotImplementedError
+
     def interpolate(self, gf):
         raise NotImplementedError

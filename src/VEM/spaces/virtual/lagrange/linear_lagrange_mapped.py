@@ -1,7 +1,7 @@
 import numpy
 
 from ...base import SpaceBase
-from ...common.scaled_monomials import P1_EXPONENTS, scaled_monomials
+from ...common.scaled_monomials import P1_EXPONENTS, scaled_monomial_gradients, scaled_monomials
 from ...common.triangle_geometry import bind_affine_triangle
 
 
@@ -52,8 +52,16 @@ class LinearLagrangeMappedVEMSpace(SpaceBase):
     def _poly_basis_ref(self, xhat):
         return scaled_monomials(xhat, self.xE_hat, self.hE_hat, P1_EXPONENTS)
 
+    def _poly_basis_grad_ref(self, xhat):
+        dxi, deta = scaled_monomial_gradients(xhat, self.xE_hat, self.hE_hat, P1_EXPONENTS)
+        return numpy.column_stack((dxi, deta))
+
     def evaluateLocal(self, x):
         return self._Pi0CoeffsRef.T.dot(self._poly_basis_ref(x))
+
+    def evaluateLocalGradient(self, x):
+        grad_hat = self._Pi0CoeffsRef.T.dot(self._poly_basis_grad_ref(x))
+        return grad_hat.dot(self.Jinv.T)
 
     def interpolate(self, gf):
         dofs = numpy.zeros(len(self.mapper))
