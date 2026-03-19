@@ -2,20 +2,22 @@
 
 import numpy
 
+from .triangle_geometry import coerce_triangle_vertices
+
 
 def build_vertex_effective_h(view, mapper, value_dof_offsets=(0, 3, 6), measure="diameter"):
     """
     Average a characteristic element length onto the global vertex-value dofs.
 
-    The Hermite VEM spaces in this package use the value-dof mapper entries at
-    offsets (0, 3, 6) to identify the three vertex blocks.
+    Use the same reference-local vertex ordering as bind_affine_triangle so the
+    Hermite vertex blocks and their associated h_v are aligned with the mapped
+    basis transform.
     """
     values = numpy.zeros(len(mapper), dtype=float)
     counts = numpy.zeros(len(mapper), dtype=float)
 
     for e in view.elements:
-        geo = e.geometry
-        verts = numpy.array([geo.corner(i) for i in range(3)], dtype=float)
+        verts = coerce_triangle_vertices(e)
 
         e01 = numpy.linalg.norm(verts[1] - verts[0])
         e12 = numpy.linalg.norm(verts[2] - verts[1])
