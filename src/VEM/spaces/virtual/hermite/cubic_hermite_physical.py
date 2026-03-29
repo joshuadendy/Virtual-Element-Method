@@ -86,7 +86,11 @@ class CubicHermitePhysicalVEMSpace(SpaceBase):
 
         self._Pi0Coeffs = numpy.zeros((self.polyDim, self.localDofs), dtype=float)
         self._Pi1Coeffs = numpy.zeros((self.gradPolyDim, self.localDofs), dtype=float)
-        self._vertex_h = build_vertex_effective_h(self.view, self.mapper, measure="diameter")
+        self._vertex_h = build_vertex_effective_h(
+            self.view,
+            self.mapper,
+            measure="adjacent_edge_average",
+        )
         self._hV_local = numpy.array([self.hE_hat, self.hE_hat, self.hE_hat], dtype=float)
 
         self.bind(numpy.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], dtype=float))

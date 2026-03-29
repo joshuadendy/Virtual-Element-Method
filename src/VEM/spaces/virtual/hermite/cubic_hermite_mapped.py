@@ -21,8 +21,14 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
 
     The value projector Pi_0 is assembled once on the reference triangle. The
     gradient projector Pi_1 is also assembled once on the reference triangle via
-    the variational definition from the attached notes, then mapped onto each
-    physical element with the Hermite basis transform and the Jacobian factor.
+    the variational definition, then mapped onto each physical element using
+
+        Pi^E_1 = F_curl( F^{-*}( Pi^{Ê}_1 ) )
+
+    In code, the final mapped gradient basis values are formed by:
+      1. evaluating the reference projected gradient basis,
+      2. applying the Hermite dof/basis transform M,
+      3. applying the Jacobian factor on the vector side.
     """
 
     def __init__(self, view):
@@ -65,6 +71,7 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         self.xE_hat = numpy.array([1.0 / 3.0, 1.0 / 3.0], dtype=float)
         self.hE_hat = numpy.sqrt(2.0)
         self._hV_hat = numpy.array([self.hE_hat, self.hE_hat, self.hE_hat], dtype=float)
+
         self._ref_vertices = (
             numpy.array([0.0, 0.0], dtype=float),
             numpy.array([1.0, 0.0], dtype=float),
@@ -86,12 +93,26 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         self._constraint_rhs_selector[1, 10] = 1.0
         self._constraint_rhs_selector[2, 11] = 1.0
 
+        # Reference CLS value projector Pi_0 on the reference triangle.
         Ahat, Chat = self._build_reference_A_and_C()
-        self._Pi0CoeffsRef = solve_cls_kkt_all_rhs(A=Ahat, C=Chat, G=self._constraint_rhs_selector)
+        self._Pi0CoeffsRef = solve_cls_kkt_all_rhs(
+            A=Ahat,
+            C=Chat,
+            G=self._constraint_rhs_selector,
+        )
+
+        # Reference gradient projector Pi_1 on the reference triangle.
         self._Pi1CoeffsRef = self._build_reference_gradient_projector()
 
+        # Elementwise scalar Hermite basis transform.
         self.M = numpy.eye(self.localDofs, dtype=float)
-        self._vertex_h = build_vertex_effective_h(self.view, self.mapper, measure="diameter")
+
+        # Use the vertex scale from the paper rather than diameter.
+        self._vertex_h = build_vertex_effective_h(
+            self.view,
+            self.mapper,
+            measure="adjacent_edge_average",
+        )
         self._hV_local = self._hV_hat.copy()
 
         self.bind(numpy.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], dtype=float))
@@ -148,18 +169,35 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
     def _reference_point(self, xphys):
         return self.Jinv.dot(numpy.asarray(xphys, dtype=float) - self.x0)
 
+    def _physical_vertices(self):
+        return (
+            self.x0.copy(),
+            self.x0 + self.vertices[1],
+            self.x0 + self.vertices[2],
+        )
+
+    # -------------------------------------------------------------------------
+    # Scalar polynomial bases
+    # -------------------------------------------------------------------------
+
     def _p3_basis_ref(self, x_hat):
         return scaled_monomials(x_hat, self.xE_hat, self.hE_hat, P3_EXPONENTS)
 
-    def _p3_basis_grad_ref(self, x_hat):
-        dxi, deta = scaled_monomial_gradients(x_hat, self.xE_hat, self.hE_hat, P3_EXPONENTS)
-        return numpy.column_stack((dxi, deta))
+    def _m1_basis_ref(self, x_hat):
+        return scaled_monomials(x_hat, self.xE_hat, self.hE_hat, P1_EXPONENTS)
 
     def _p2_basis_ref(self, x_hat):
         return scaled_monomials(x_hat, self.xE_hat, self.hE_hat, P2_EXPONENTS)
 
     def _p2_basis_grad_ref(self, x_hat):
         return scaled_monomial_gradients(x_hat, self.xE_hat, self.hE_hat, P2_EXPONENTS)
+
+    def _m1_basis_phys(self, x_phys):
+        return scaled_monomials(x_phys, self.xE, self.hE, P1_EXPONENTS)
+
+    # -------------------------------------------------------------------------
+    # Vector P2 basis on the reference triangle for Pi_1
+    # -------------------------------------------------------------------------
 
     def _vector_p2_basis_ref(self, x_hat):
         vals = self._p2_basis_ref(x_hat)
@@ -169,14 +207,12 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         return basis
 
     def _vector_p2_div_ref(self, x_hat):
-        dxi, deta = self._p2_basis_grad_ref(x_hat)
-        return numpy.concatenate((dxi, deta))
+        dmx, dmy = self._p2_basis_grad_ref(x_hat)
+        return numpy.concatenate((dmx, dmy))
 
-    def _m1_basis_ref(self, x_hat):
-        return scaled_monomials(x_hat, self.xE_hat, self.hE_hat, P1_EXPONENTS)
-
-    def _m1_basis_phys(self, x_phys):
-        return scaled_monomials(x_phys, self.xE, self.hE, P1_EXPONENTS)
+    # -------------------------------------------------------------------------
+    # Reference Pi_0
+    # -------------------------------------------------------------------------
 
     def _build_reference_A_and_C(self):
         A = numpy.zeros((self.localDofs, self.polyDim), dtype=float)
@@ -185,7 +221,12 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         row = 0
         for iv, xhat_v in enumerate(self._ref_vertices):
             A[row, :] = self._p3_basis_ref(xhat_v)
-            grad_hat = self._p3_basis_grad_ref(xhat_v)
+
+            dxi, deta = scaled_monomial_gradients(
+                xhat_v, self.xE_hat, self.hE_hat, P3_EXPONENTS
+            )
+            grad_hat = numpy.column_stack((dxi, deta))
+
             hhat_a = self._hV_hat[iv]
             A[row + 1, :] = hhat_a * grad_hat[:, 0]
             A[row + 2, :] = hhat_a * grad_hat[:, 1]
@@ -203,6 +244,10 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         C[:, :] = mom_rows
         return A, C
 
+    # -------------------------------------------------------------------------
+    # Edge helpers used in the reference Pi_1 assembly
+    # -------------------------------------------------------------------------
+
     def _edge_geometry_from_vertices(self, verts, ia, ib, x_center):
         xa = numpy.asarray(verts[ia], dtype=float)
         xb = numpy.asarray(verts[ib], dtype=float)
@@ -213,13 +258,14 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         tangent = edge / length
         normal = numpy.array([tangent[1], -tangent[0]], dtype=float)
         midpoint = 0.5 * (xa + xb)
-        if numpy.dot(normal, numpy.asarray(x_center, dtype=float) - midpoint) > 0.0:
+        if numpy.dot(normal, x_center - midpoint) > 0.0:
             normal *= -1.0
         return xa, edge, length, tangent, normal
 
-    def _edge_trace_from_local_dofs(self, local_dofs, verts, h_values, ia, ib, r):
-        xa, edge, length, tangent, _ = self._edge_geometry_from_vertices(verts, ia, ib, self.xE_hat)
-        del xa, edge
+    def _edge_trace_from_local_dofs(self, local_dofs, verts, ia, ib, r, hV):
+        _, _, length, tangent, _ = self._edge_geometry_from_vertices(
+            verts, ia, ib, numpy.mean(numpy.asarray(verts), axis=0)
+        )
 
         base_a = 3 * ia
         base_b = 3 * ib
@@ -228,12 +274,12 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         u_b = float(local_dofs[base_b])
 
         grad_a = numpy.array([
-            float(local_dofs[base_a + 1]) / float(h_values[ia]),
-            float(local_dofs[base_a + 2]) / float(h_values[ia]),
+            float(local_dofs[base_a + 1]) / float(hV[ia]),
+            float(local_dofs[base_a + 2]) / float(hV[ia]),
         ], dtype=float)
         grad_b = numpy.array([
-            float(local_dofs[base_b + 1]) / float(h_values[ib]),
-            float(local_dofs[base_b + 2]) / float(h_values[ib]),
+            float(local_dofs[base_b + 1]) / float(hV[ib]),
+            float(local_dofs[base_b + 2]) / float(hV[ib]),
         ], dtype=float)
 
         m_a = length * float(numpy.dot(tangent, grad_a))
@@ -247,13 +293,27 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
 
         return u_a * h00 + m_a * h10 + u_b * h01 + m_b * h11
 
+    # -------------------------------------------------------------------------
+    # Reference Pi_1
+    # -------------------------------------------------------------------------
+
     def _build_reference_gradient_projector(self):
+        """
+        Assemble Pi_1 on the reference element only.
+        """
         mass = numpy.zeros((self.gradPolyDim, self.gradPolyDim), dtype=float)
         rhs = numpy.zeros((self.gradPolyDim, self.localDofs), dtype=float)
 
+        verts = self._ref_vertices
+        x_center = self.xE_hat
+
+        # Volume term:
+        #   ∫_Ê Pi_1[φ_j] · q̂
+        # = -∫_Ê Pi_0[φ_j] div q̂ + Σ_edges ∫_ê Pi^ê_0[φ_j] (n̂·q̂)
         for p in self._momentQuad:
             xhat = p.position
             w = float(p.weight)
+
             vec_basis = self._vector_p2_basis_ref(xhat)
             div_basis = self._vector_p2_div_ref(xhat)
             pi0_vals = self._Pi0CoeffsRef.T.dot(self._p3_basis_ref(xhat))
@@ -261,37 +321,52 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
             mass += w * vec_basis.dot(vec_basis.T)
             rhs -= w * numpy.outer(div_basis, pi0_vals)
 
-        verts = self._ref_vertices
+        # Edge term
         for ia, ib in self._edge_pairs:
-            _, edge, length, _, normal = self._edge_geometry_from_vertices(verts, ia, ib, self.xE_hat)
+            xa, edge, length, _, normal = self._edge_geometry_from_vertices(
+                verts, ia, ib, x_center
+            )
+
             for r, wr in zip(self._edge_quad_r, self._edge_quad_w):
-                xhat = verts[ia] + float(r) * edge
+                xhat = xa + float(r) * edge
                 flux_basis = self._vector_p2_basis_ref(xhat).dot(normal)
+
                 for j in range(self.localDofs):
                     local = numpy.zeros(self.localDofs, dtype=float)
                     local[j] = 1.0
                     trace_val = self._edge_trace_from_local_dofs(
-                        local,
+                        local_dofs=local,
                         verts=verts,
-                        h_values=self._hV_hat,
                         ia=ia,
                         ib=ib,
                         r=r,
+                        hV=self._hV_hat,
                     )
                     rhs[:, j] += length * float(wr) * flux_basis * trace_val
 
         return self._solve_dense_system(mass, rhs)
+
+    # -------------------------------------------------------------------------
+    # Public evaluation
+    # -------------------------------------------------------------------------
 
     def evaluateLocal(self, x):
         phi_ref_proj = self._Pi0CoeffsRef.T.dot(self._p3_basis_ref(x))
         return self.M.dot(phi_ref_proj)
 
     def evaluateLocalGradient(self, x):
+        """
+        Map the reference gradient projector onto the physical element.
+        """
         grad_ref_proj = self._Pi1CoeffsRef.T.dot(self._vector_p2_basis_ref(x))
         return self.M.dot(grad_ref_proj).dot(self.Jinv.T)
 
     def evaluatePhysical(self, x_phys):
         return self.evaluateLocal(self._reference_point(x_phys))
+
+    # -------------------------------------------------------------------------
+    # Projector-on-dofs matrix used by stabilization
+    # -------------------------------------------------------------------------
 
     def localProjectorDofs(self):
         P = numpy.zeros((self.localDofs, self.localDofs), dtype=float)
@@ -314,6 +389,10 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
                 self.evaluateLocal(xhat),
             )
         return P
+
+    # -------------------------------------------------------------------------
+    # Interpolation into the physical mapped Hermite VEM dofs
+    # -------------------------------------------------------------------------
 
     def interpolate(self, gf):
         dofs = numpy.zeros(len(self.mapper), dtype=float)
