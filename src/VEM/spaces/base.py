@@ -3,10 +3,9 @@
 
 class SpaceBase:
     """
-    Minimal base class for the first package split.
+    Common base class for finite and virtual element spaces.
 
-    We deliberately avoid abc.ABC for now to keep the transition simple.
-    Concrete spaces should implement the methods below.
+    Concrete spaces should implement bind(), evaluateLocal(), and interpolate().
     """
 
     def bind(self, element_or_vertices):
