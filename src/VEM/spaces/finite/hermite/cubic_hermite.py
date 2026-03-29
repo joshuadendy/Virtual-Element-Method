@@ -40,7 +40,9 @@ class CubicHermiteSpace(SpaceBase):
         ], dtype=float)
 
         self.vertices = numpy.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], dtype=float)
+        self.x0 = numpy.array([0.0, 0.0], dtype=float)
         self.J = numpy.eye(2, dtype=float)
+        self.Jinv = numpy.eye(2, dtype=float)
         self.M = numpy.eye(self.localDofs, dtype=float)
 
         self._invDofMatrix = self._buildInverseDofMatrix()
@@ -51,7 +53,9 @@ class CubicHermiteSpace(SpaceBase):
         self.vertices[0] = data["x0"]
         self.vertices[1] = data["e1"]
         self.vertices[2] = data["e2"]
+        self.x0 = data["x0"].copy()
         self.J = data["J"].copy()
+        self.Jinv = data["Jinv"].copy()
         self.M = build_cubic_hermite_transform(self.J)
 
     def _buildInverseDofMatrix(self):
@@ -74,6 +78,11 @@ class CubicHermiteSpace(SpaceBase):
     def evaluateLocal(self, x):
         phi_ref = self._evaluateReferenceLocal(x)
         return self.M.dot(phi_ref)
+
+    def evaluateLocalGradient(self, x):
+        dx, dy = monomial_gradients(x, P3_EXPONENTS)
+        grad_hat = self._invDofMatrix.T.dot(numpy.column_stack((dx, dy)))
+        return self.M.dot(grad_hat).dot(self.Jinv.T)
 
     def interpolate(self, gf):
         dofs = numpy.zeros(len(self.mapper), dtype=float)
