@@ -13,4 +13,5 @@ dependencies = [
   "dune_geometry",
   "dune_grid",
   "dune_alugrid",
+  "cmake",
 ]
