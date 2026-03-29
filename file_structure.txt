@@ -4,16 +4,21 @@ Directory structure:
     ├── file_structure.txt
     ├── LICENSE
     ├── pyproject.toml
+    ├── repo.txt
+    ├── requirements.txt
     ├── demo/
-    │   └── run_l2_projection.py
+    │   ├── run_l2_projection.py
+    │   └── run_poisson.py
     └── src/
         └── VEM/
             ├── __init__.py
             ├── assembly/
             │   ├── __init__.py
-            │   └── l2_projection.py
+            │   ├── l2_projection.py
+            │   └── poisson.py
             ├── diagnostics/
             │   ├── __init__.py
+            │   ├── compare_gradients.py
             │   ├── compare_projectors.py
             │   └── error.py
             └── spaces/
@@ -23,6 +28,7 @@ Directory structure:
                 │   ├── __init__.py
                 │   ├── cls_projector.py
                 │   ├── hermite_mapping.py
+                │   ├── reference_triangle.py
                 │   ├── scaled_monomials.py
                 │   ├── triangle_geometry.py
                 │   └── vertex_scaling.py
