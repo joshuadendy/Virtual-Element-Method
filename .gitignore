@@ -5,3 +5,4 @@ src/VEM.egg-info/
 results.txt
 .DS_Store
 **/__pycache__/*
+.vscode/settings.json

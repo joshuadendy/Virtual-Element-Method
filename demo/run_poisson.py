@@ -190,6 +190,6 @@ if __name__ == "__main__":
             CubicHermitePhysicalVEMSpace,
             CubicHermiteMappedVEMSpace,
         ),
-        refinements=3,
+        refinements=2,
         plot=False,
     )
