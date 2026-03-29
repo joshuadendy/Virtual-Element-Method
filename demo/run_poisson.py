@@ -13,6 +13,7 @@ from VEM import (
     QuadraticLagrangeSpace,
     apply_dirichlet,
     assemble_poisson,
+    compare_gradient_projectors,
     projected_error,
 )
 
@@ -23,6 +24,7 @@ def run_poisson_demo(
     plot=False,
     stabilization="auto",
     stabilization_scale=1.0,
+    compare_mapped=True,
 ):
     def build_demo_view(level, nx0=8, ny0=8):
         """
@@ -178,6 +180,19 @@ def run_poisson_demo(
 
         print()
 
+    if compare_mapped:
+        _, compare_view = build_demo_view(level=0)
+        space_physical = CubicHermitePhysicalVEMSpace(compare_view)
+        space_mapped = CubicHermiteMappedVEMSpace(compare_view)
+        return compare_gradient_projectors(
+            space_physical,
+            space_mapped,
+            quad_order=8,
+            print_per_element=False,
+        )
+
+    return None
+
 
 if __name__ == "__main__":
     run_poisson_demo(
@@ -192,4 +207,5 @@ if __name__ == "__main__":
         ),
         refinements=2,
         plot=False,
+        compare_mapped=False,
     )
