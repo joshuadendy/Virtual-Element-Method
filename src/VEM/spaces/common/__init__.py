@@ -15,6 +15,8 @@ from .scaled_monomials import (
     scaled_coords,
     scaled_monomials,
     scaled_monomial_gradients,
+    monomial_linear_transform_matrix,
+    scaled_monomial_inverse_pullback_matrix,
 )
 from .cls_projector import solve_cls_kkt_all_rhs
 from .hermite_mapping import (

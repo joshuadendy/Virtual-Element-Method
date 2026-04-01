@@ -10,6 +10,7 @@ from ...common.scaled_monomials import (
     P3_EXPONENTS,
     scaled_monomial_gradients,
     scaled_monomials,
+    scaled_monomial_inverse_pullback_matrix,
 )
 from ...common.triangle_geometry import bind_affine_triangle
 from ...common.vertex_scaling import build_vertex_effective_h
@@ -17,11 +18,11 @@ from ...common.vertex_scaling import build_vertex_effective_h
 
 class CubicHermiteMappedVEMSpace(SpaceBase):
     """
-    The value projector \( \Pi_0 \) is assembled once on the reference triangle.
-    The gradient projector \( \Pi_1 \) is also assembled on the reference triangle
+    The value projector Pi_0 is assembled once on the reference triangle.
+    The gradient projector Pi_1 is also assembled on the reference triangle
     and mapped to each physical element according to
 
-    \Pi_1^E = F_{\mathrm{curl}}(F^{-*}(\Pi_1^{\hat E})).
+    Pi_1^E = F_{mathrm{curl}}(F^{-*}(Pi_1^{hat E})).
 
     In code, the mapped gradient basis is formed by
     1. evaluating the reference projected gradient basis,
@@ -68,7 +69,7 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
 
         self.xE_hat = numpy.array([1.0 / 3.0, 1.0 / 3.0], dtype=float)
         self.hE_hat = numpy.sqrt(2.0)
-        self._hV_hat = numpy.array([self.hE_hat, self.hE_hat, self.hE_hat], dtype=float)
+        self._hV_hat = self._reference_vertex_h()
 
         self._ref_vertices = (
             numpy.array([0.0, 0.0], dtype=float),
@@ -112,6 +113,7 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
             measure="adjacent_edge_average",
         )
         self._hV_local = self._hV_hat.copy()
+        self._constraint_pullback = numpy.eye(self.constraintDim, dtype=float)
 
         self.bind(numpy.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], dtype=float))
 
@@ -121,6 +123,17 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         r = 0.5 * (pts + 1.0)
         w = 0.5 * wts
         return r, w
+
+    @staticmethod
+    def _reference_vertex_h():
+        e01 = 1.0
+        e12 = numpy.sqrt(2.0)
+        e20 = 1.0
+        return numpy.array([
+            0.5 * (e01 + e20),
+            0.5 * (e01 + e12),
+            0.5 * (e12 + e20),
+        ], dtype=float)
 
     @staticmethod
     def _solve_dense_system(A, B):
@@ -152,13 +165,17 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         self.xE = data["xE"].copy()
         self.hE = float(data["hE"])
 
+        self._constraint_pullback = scaled_monomial_inverse_pullback_matrix(
+            Jinv=self.Jinv,
+            h=self.hE,
+            h_hat=self.hE_hat,
+            exponents=P1_EXPONENTS,
+        )
+
         self.M = build_k3_mapped_transform(
             J=self.J,
-            Jinv=self.Jinv,
             hV_hat=self._hV_hat,
             hV_local=self._hV_local,
-            hE=self.hE,
-            hE_hat=self.hE_hat,
         )
 
     def _physical_point(self, xhat):
@@ -192,6 +209,17 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
 
     def _m1_basis_phys(self, x_phys):
         return scaled_monomials(x_phys, self.xE, self.hE, P1_EXPONENTS)
+
+    def _m1_basis_mapped_phys(self, x_phys):
+        """
+        Physical evaluation of the transported reference M1 basis.
+
+        These are the interior moment functionals appearing in the mapped tuple
+        C = F_{-*}(hat C), rather than the raw physical scaled monomials. Keeping the
+        mapped space in this transported basis avoids re-expressing the last
+        three dofs through an extra block in M.
+        """
+        return self._constraint_pullback.dot(self._m1_basis_phys(x_phys))
 
     # -------------------------------------------------------------------------
     # Vector P2 basis on the reference triangle for Pi_1
@@ -385,7 +413,7 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
             w = float(p.weight * abs(self.detJ)) / self.area
             x_phys = self._physical_point(xhat)
             P[9:12, :] += w * numpy.outer(
-                self._m1_basis_phys(x_phys),
+                self._m1_basis_mapped_phys(x_phys),
                 self.evaluateLocal(xhat),
             )
         return P
@@ -427,7 +455,7 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
                 xhat = p.position
                 w = float(p.weight * geo.integrationElement(xhat))
                 x_phys = geo.toGlobal(xhat)
-                mom += w * float(gf(e, xhat)) * self._m1_basis_phys(x_phys)
+                mom += w * float(gf(e, xhat)) * self._m1_basis_mapped_phys(x_phys)
 
             local[9:12] = mom / self.area
             dofs[idx] = local
