@@ -15,9 +15,6 @@ def _set_power_of_two_ticks(ax):
     lo = float(min(xmin, xmax))
     hi = float(max(xmin, xmax))
 
-    if not (numpy.isfinite(lo) and numpy.isfinite(hi)) or lo <= 0.0:
-        return
-
     k_start = max(0, int(numpy.ceil(-numpy.log2(hi))))
     k_end = max(k_start, int(numpy.floor(-numpy.log2(lo))))
 
@@ -123,7 +120,7 @@ def plot_eoc_curves(histories, component_names, title_prefix="", show_reference=
             if show_reference and numpy.isfinite(order) and hs.size >= 2:
                 href, eref = _reference_curve(hs, errs, order)
                 ax.loglog(
-                    href,
+                    href[::-1],
                     eref,
                     linestyle="--",
                     linewidth=1.0,
