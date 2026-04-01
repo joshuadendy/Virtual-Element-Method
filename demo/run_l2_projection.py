@@ -1,9 +1,10 @@
 import numpy
+import matplotlib.pyplot as plt
 import scipy.sparse
 import scipy.sparse.linalg
 from dune.grid import cartesianDomain, gridFunction
 from VEM.assembly import assemble_l2_projection
-from VEM import compare_projectors, error
+from VEM import compare_projectors, error, mesh_size, plot_eoc_curves
 from VEM import (
     LinearLagrangeSpace,
     QuadraticLagrangeSpace,
@@ -17,13 +18,18 @@ from VEM import (
 # Use a triangular grid for demo
 from dune.alugrid import aluConformGrid
 
-def run_projection_demo(spaces=[CubicHermiteMappedVEMSpace], refinements=3,
-                        plot=True, compare_mapped=True):
 
+def run_projection_demo(
+    spaces=(CubicHermiteMappedVEMSpace,),
+    refinements=3,
+    plot=True,
+    compare_mapped=True,
+    plot_eoc=False,
+    show_reference_slope=True,
+):
     def build_demo_view(nx=10, ny=10):
         domain = cartesianDomain([0, 0], [1, 1], [nx, ny])
         return domain, aluConformGrid(domain)
-
 
     def make_test_function(view):
         @gridFunction(view)
@@ -32,7 +38,6 @@ def run_projection_demo(spaces=[CubicHermiteMappedVEMSpace], refinements=3,
             return numpy.cos(2 * numpy.pi * x) * numpy.cos(2 * numpy.pi * y)
 
         return u
-
 
     def make_projected_function(view, space, dofs):
         @gridFunction(view)
@@ -45,6 +50,8 @@ def run_projection_demo(spaces=[CubicHermiteMappedVEMSpace], refinements=3,
 
         return uh
 
+    histories = {}
+
     for space_type in spaces:
         print("Testing space:", space_type.__name__)
 
@@ -55,18 +62,20 @@ def run_projection_demo(spaces=[CubicHermiteMappedVEMSpace], refinements=3,
             u.plot(level=3)
 
         old_pde_error = None
+        history = []
+
         for _ in range(refinements):
             space = space_type(view)
             quad_order = 4 if space.localDofs == 3 else 6
+            h = mesh_size(view)
 
             print(
                 "number of elements:", view.size(0),
-                "number of dofs:", len(space.mapper)
+                "number of dofs:", len(space.mapper),
+                "mesh size h:", h,
             )
 
-            rhs, matrix = assemble_l2_projection(space,
-                                                 u,
-                                                 quad_order=quad_order)
+            rhs, matrix = assemble_l2_projection(space, u, quad_order=quad_order)
             dofs = scipy.sparse.linalg.spsolve(matrix, rhs)
             uh = make_projected_function(view, space, dofs)
 
@@ -74,6 +83,8 @@ def run_projection_demo(spaces=[CubicHermiteMappedVEMSpace], refinements=3,
                 uh.plot(level=1)
 
             err = error(view, u, uh)
+            history.append({"h": h, "errors": err})
+
             if old_pde_error is not None:
                 eoc = [numpy.log(old_e / e) / numpy.log(2)
                        for old_e, e in zip(old_pde_error, err)]
@@ -83,7 +94,17 @@ def run_projection_demo(spaces=[CubicHermiteMappedVEMSpace], refinements=3,
             old_pde_error = err
 
             view.hierarchicalGrid.globalRefine(2)
+
+        histories[space_type.__name__] = history
         print()
+
+    if plot_eoc:
+        plot_eoc_curves(
+            histories,
+            component_names=("L2",),
+            title_prefix="L2 projection convergence",
+            show_reference=True if show_reference_slope else False,
+        )
 
     if compare_mapped:
         _, compare_view = build_demo_view()
@@ -97,7 +118,7 @@ def run_projection_demo(spaces=[CubicHermiteMappedVEMSpace], refinements=3,
             compare_local_mass=True,
         )
 
-    return None
+    return histories
 
 
 if __name__ == "__main__":
@@ -113,5 +134,7 @@ if __name__ == "__main__":
         ),
         compare_mapped=False,
         refinements=2,
-        plot=False
+        plot=False,
+        plot_eoc=False,
     )
+    plt.show()
