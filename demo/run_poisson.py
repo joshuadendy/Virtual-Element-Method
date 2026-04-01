@@ -198,7 +198,7 @@ def run_poisson_demo(
             histories,
             component_names=("L2", "H1-semi"),
             title_prefix="Poisson convergence",
-            show_reference=True if show_reference_slope else False,
+            show_reference=False if show_reference_slope else False,
         )
 
     if compare_mapped:
@@ -218,17 +218,17 @@ def run_poisson_demo(
 if __name__ == "__main__":
     run_poisson_demo(
         spaces=(
-            # LinearLagrangeSpace,
+            LinearLagrangeSpace,
             # QuadraticLagrangeSpace,
-            # CubicHermiteSpace,
-            # LinearLagrangePhysicalVEMSpace,
+            CubicHermiteSpace,
+            LinearLagrangePhysicalVEMSpace,
             LinearLagrangeMappedVEMSpace,
-            # CubicHermitePhysicalVEMSpace,
+            CubicHermitePhysicalVEMSpace,
             CubicHermiteMappedVEMSpace,
         ),
-        refinements=5,
+        refinements=3,
         plot=False,
         compare_mapped=False,
-        plot_eoc=True,
+        plot_eoc=False,
     )
     plt.show()

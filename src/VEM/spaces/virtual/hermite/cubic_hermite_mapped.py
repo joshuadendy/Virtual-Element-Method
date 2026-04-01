@@ -18,11 +18,11 @@ from ...common.vertex_scaling import build_vertex_effective_h
 
 class CubicHermiteMappedVEMSpace(SpaceBase):
     """
-    The value projector \( \Pi_0 \) is assembled once on the reference triangle.
-    The gradient projector \( \Pi_1 \) is also assembled on the reference triangle
+    The value projector Pi_0 is assembled once on the reference triangle.
+    The gradient projector Pi_1 is also assembled on the reference triangle
     and mapped to each physical element according to
 
-    \Pi_1^E = F_{\mathrm{curl}}(F^{-*}(\Pi_1^{\hat E})).
+    Pi_1^E = F_{mathrm{curl}}(F^{-*}(Pi_1^{hat E})).
 
     In code, the mapped gradient basis is formed by
     1. evaluating the reference projected gradient basis,
@@ -69,7 +69,7 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
 
         self.xE_hat = numpy.array([1.0 / 3.0, 1.0 / 3.0], dtype=float)
         self.hE_hat = numpy.sqrt(2.0)
-        self._hV_hat = numpy.array([self.hE_hat, self.hE_hat, self.hE_hat], dtype=float)
+        self._hV_hat = self._reference_vertex_h()
 
         self._ref_vertices = (
             numpy.array([0.0, 0.0], dtype=float),
@@ -123,6 +123,17 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         r = 0.5 * (pts + 1.0)
         w = 0.5 * wts
         return r, w
+
+    @staticmethod
+    def _reference_vertex_h():
+        e01 = 1.0
+        e12 = numpy.sqrt(2.0)
+        e20 = 1.0
+        return numpy.array([
+            0.5 * (e01 + e20),
+            0.5 * (e01 + e12),
+            0.5 * (e12 + e20),
+        ], dtype=float)
 
     @staticmethod
     def _solve_dense_system(A, B):
@@ -204,7 +215,7 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         Physical evaluation of the transported reference M1 basis.
 
         These are the interior moment functionals appearing in the mapped tuple
-        C = F_{-*}(\hat C), rather than the raw physical scaled monomials. Keeping the
+        C = F_{-*}(hat C), rather than the raw physical scaled monomials. Keeping the
         mapped space in this transported basis avoids re-expressing the last
         three dofs through an extra block in M.
         """
