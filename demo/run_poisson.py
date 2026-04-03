@@ -1,6 +1,7 @@
 import numpy
 import matplotlib.pyplot as plt
 import scipy.sparse.linalg
+import time
 from dune.grid import cartesianDomain, gridFunction
 from dune.alugrid import aluConformGrid
 
@@ -159,10 +160,12 @@ def run_poisson_demo(
 
     for space_type in spaces:
         print("Testing space:", space_type.__name__)
+        space_start = time.perf_counter()
         old_err = None
         history = []
 
         for level in range(refinements):
+            level_start = time.perf_counter()
             _, view = build_demo_view(level)
             u = make_exact_solution(view)
             f = make_rhs(view)
@@ -179,6 +182,7 @@ def run_poisson_demo(
                 quad_order = 4
 
             print(
+                "level ", level, ":",
                 "number of elements:", view.size(0),
                 "number of dofs:", len(space.mapper),
                 "mesh size h:", h,
@@ -213,10 +217,14 @@ def run_poisson_demo(
             else:
                 eoc = None
 
+            elapsed = time.perf_counter() - level_start
             print("  projected [L2, H1-semi]:", err, eoc)
+            print(f"  runtime: {elapsed:.3f} s")
             old_err = err
 
+        total_elapsed = time.perf_counter() - space_start
         histories[space_type.__name__] = history
+        print(f"Total runtime for {space_type.__name__}: {total_elapsed:.3f} s")
         print()
 
     if plot_eoc:
@@ -244,10 +252,10 @@ def run_poisson_demo(
 if __name__ == "__main__":
     run_poisson_demo(
         spaces=(
-            LinearLagrangeSpace,
-            QuadraticLagrangeSpace,
-            CubicHermiteSpace,
-            QuarticHermiteSpace,
+            # LinearLagrangeSpace,
+            # QuadraticLagrangeSpace,
+            # CubicHermiteSpace,
+            # QuarticHermiteSpace,
             LinearLagrangePhysicalVEMSpace,
             LinearLagrangeMappedVEMSpace,
             QuadraticLagrangePhysicalVEMSpace,
@@ -257,7 +265,7 @@ if __name__ == "__main__":
             QuarticHermitePhysicalVEMSpace,
             QuarticHermiteMappedVEMSpace,
         ),
-        refinements=1,
+        refinements=5,
         plot=False,
         compare_mapped=False,
         plot_eoc=True,
