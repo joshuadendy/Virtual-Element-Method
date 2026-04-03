@@ -4,23 +4,22 @@ from math import comb
 
 import numpy
 
-P1_EXPONENTS = [
-    (0, 0),
-    (1, 0), (0, 1),
-]
 
-P2_EXPONENTS = [
-    (0, 0),
-    (1, 0), (0, 1),
-    (2, 0), (1, 1), (0, 2),
-]
+def total_degree_exponents(order):
+    """Return hierarchical total-degree exponents up to the given order."""
+    exponents = []
+    for degree in range(order + 1):
+        for a in range(degree, -1, -1):
+            b = degree - a
+            exponents.append((a, b))
+    return exponents
 
-P3_EXPONENTS = [
-    (0, 0),
-    (1, 0), (0, 1),
-    (2, 0), (1, 1), (0, 2),
-    (3, 0), (2, 1), (1, 2), (0, 3),
-]
+
+P0_EXPONENTS = total_degree_exponents(0)
+P1_EXPONENTS = total_degree_exponents(1)
+P2_EXPONENTS = total_degree_exponents(2)
+P3_EXPONENTS = total_degree_exponents(3)
+P4_EXPONENTS = total_degree_exponents(4)
 
 
 def monomials(x, exponents):

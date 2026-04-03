@@ -9,10 +9,15 @@ from VEM import (
     LinearLagrangeSpace,
     QuadraticLagrangeSpace,
     CubicHermiteSpace,
+    QuarticHermiteSpace,
     CubicHermiteMappedVEMSpace,
     CubicHermitePhysicalVEMSpace,
+    QuarticHermiteMappedVEMSpace,
+    QuarticHermitePhysicalVEMSpace,
     LinearLagrangeMappedVEMSpace,
-    LinearLagrangePhysicalVEMSpace
+    LinearLagrangePhysicalVEMSpace,
+    QuadraticLagrangeMappedVEMSpace,
+    QuadraticLagrangePhysicalVEMSpace,
 )
 
 # Use a triangular grid for demo
@@ -20,7 +25,7 @@ from dune.alugrid import aluConformGrid
 
 
 def run_projection_demo(
-    spaces=(CubicHermiteMappedVEMSpace,),
+    spaces=(QuarticHermiteMappedVEMSpace,),
     refinements=3,
     plot=True,
     compare_mapped=True,
@@ -66,7 +71,14 @@ def run_projection_demo(
 
         for _ in range(refinements):
             space = space_type(view)
-            quad_order = 4 if space.localDofs == 3 else 6
+            if space.localDofs >= 15:
+                quad_order = 10
+            elif space.localDofs >= 10:
+                quad_order = 8
+            elif space.localDofs > 3:
+                quad_order = 6
+            else:
+                quad_order = 4
             h = mesh_size(view)
 
             print(
@@ -108,12 +120,12 @@ def run_projection_demo(
 
     if compare_mapped:
         _, compare_view = build_demo_view()
-        space_global = CubicHermitePhysicalVEMSpace(compare_view)
-        space_mapped = CubicHermiteMappedVEMSpace(compare_view)
+        space_global = QuarticHermitePhysicalVEMSpace(compare_view)
+        space_mapped = QuarticHermiteMappedVEMSpace(compare_view)
         return compare_projectors(
             space_global,
             space_mapped,
-            quad_order=8,
+            quad_order=10,
             print_per_element=False,
             compare_local_mass=True,
         )
@@ -127,14 +139,19 @@ if __name__ == "__main__":
             LinearLagrangeSpace,
             QuadraticLagrangeSpace,
             CubicHermiteSpace,
+            QuarticHermiteSpace,
             LinearLagrangePhysicalVEMSpace,
             LinearLagrangeMappedVEMSpace,
+            QuadraticLagrangePhysicalVEMSpace,
+            QuadraticLagrangeMappedVEMSpace,
             CubicHermitePhysicalVEMSpace,
             CubicHermiteMappedVEMSpace,
+            QuarticHermitePhysicalVEMSpace,
+            QuarticHermiteMappedVEMSpace,
         ),
         compare_mapped=False,
-        refinements=3,
+        refinements=2,
         plot=False,
-        plot_eoc=False,
+        plot_eoc=True,
     )
     plt.show()

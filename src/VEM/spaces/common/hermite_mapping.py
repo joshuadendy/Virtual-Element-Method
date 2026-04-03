@@ -36,3 +36,22 @@ def build_k3_mapped_transform(J, hV_hat, hV_local, constraint_transform=None):
         M[9:12, 9:12] = block
 
     return M
+
+
+def build_k4_mapped_transform(J, hV_hat, hV_local):
+    """
+    Transform matrix for the k=4 mapped Hermite-VEM basis.
+
+    Ordering:
+      - 9 vertex value / scaled-gradient dofs
+      - 3 edge-average dofs
+      - 6 interior moment dofs
+    Only the scaled-gradient 2x2 vertex blocks change non-trivially.
+    """
+    M = numpy.eye(18, dtype=float)
+
+    for i, base in enumerate((0, 3, 6)):
+        sl = slice(base + 1, base + 3)
+        M[sl, sl] = (hV_hat[i] / hV_local[i]) * J
+
+    return M
