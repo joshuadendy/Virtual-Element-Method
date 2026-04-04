@@ -31,13 +31,15 @@ def run_poisson_demo(
     spaces=(LinearLagrangeMappedVEMSpace,),
     refinements=3,
     plot=False,
-    stabilization="auto",
-    stabilization_scale=1.0,
+    stabilisation="auto",
+    stabilisation_scale=1.0,
     compare_mapped=True,
     plot_eoc=False,
     show_reference_slope=True,
+    nx0=8,
+    ny0=8,
 ):
-    def build_demo_view(level, nx0=8, ny0=8):
+    def build_demo_view(level, nx0=nx0, ny0=ny0):
         """
         Rebuild a fresh structured grid on each level.
         """
@@ -192,8 +194,8 @@ def run_poisson_demo(
                 space,
                 f,
                 quad_order=quad_order,
-                stabilization=stabilization,
-                stabilization_scale=stabilization_scale,
+                stabilisation=stabilisation,
+                stabilisation_scale=stabilisation_scale,
             )
 
             exact_dofs = space.interpolate(u)
@@ -252,10 +254,10 @@ def run_poisson_demo(
 if __name__ == "__main__":
     run_poisson_demo(
         spaces=(
-            # LinearLagrangeSpace,
-            # QuadraticLagrangeSpace,
-            # CubicHermiteSpace,
-            # QuarticHermiteSpace,
+            LinearLagrangeSpace,
+            QuadraticLagrangeSpace,
+            CubicHermiteSpace,
+            QuarticHermiteSpace,
             LinearLagrangePhysicalVEMSpace,
             LinearLagrangeMappedVEMSpace,
             QuadraticLagrangePhysicalVEMSpace,
@@ -265,9 +267,9 @@ if __name__ == "__main__":
             QuarticHermitePhysicalVEMSpace,
             QuarticHermiteMappedVEMSpace,
         ),
-        refinements=5,
+        refinements=4,
         plot=False,
         compare_mapped=False,
-        plot_eoc=True,
+        plot_eoc=False,
     )
     plt.show()
