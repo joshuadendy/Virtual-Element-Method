@@ -382,6 +382,19 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         phi_ref_proj = self._Pi0CoeffsRef.T.dot(self._p3_basis_ref(x))
         return self.M.dot(phi_ref_proj)
 
+    def _evaluateLocalValueProjectionGradient(self, x):
+        """
+        Gradient of the mapped scalar value projection Pi_0.
+
+        This is used only when applying Hermite derivative dofs to the projected
+        scalar polynomial inside localProjectorDofs(). The mapped Poisson
+        consistency term should continue to use evaluateLocalGradient(), i.e. the
+        separately mapped gradient projector Pi_1.
+        """
+        dmx, dmy = scaled_monomial_gradients(x, self.xE_hat, self.hE_hat, P3_EXPONENTS)
+        grad_ref = self._Pi0CoeffsRef.T.dot(numpy.column_stack((dmx, dmy)))
+        return self.M.dot(grad_ref).dot(self.Jinv.T)
+
     def evaluateLocalGradient(self, x):
         """
         Map the reference gradient projector onto the physical element.
@@ -393,7 +406,7 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         return self.evaluateLocal(self._reference_point(x_phys))
 
     # -------------------------------------------------------------------------
-    # Projector-on-dofs matrix used by stabilization
+    # Projector-on-dofs matrix used by stabilisation
     # -------------------------------------------------------------------------
 
     def localProjectorDofs(self):
@@ -402,7 +415,7 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         row = 0
         for iv, xhat_v in enumerate(self._ref_vertices):
             P[row, :] = self.evaluateLocal(xhat_v)
-            grad = self.evaluateLocalGradient(xhat_v)
+            grad = self._evaluateLocalValueProjectionGradient(xhat_v)
             h_a = self._hV_local[iv]
             P[row + 1, :] = h_a * grad[:, 0]
             P[row + 2, :] = h_a * grad[:, 1]

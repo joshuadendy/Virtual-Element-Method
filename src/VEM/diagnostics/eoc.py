@@ -10,7 +10,6 @@ def _set_power_of_two_ticks(ax):
     Label the x-axis only at negative powers of two: 1, 2^{-1}, 2^{-2}, ...
     within the visible range.
     """
-
     xmin, xmax = ax.get_xlim()
     lo = float(min(xmin, xmax))
     hi = float(max(xmin, xmax))
@@ -18,13 +17,12 @@ def _set_power_of_two_ticks(ax):
     k_start = max(0, int(numpy.ceil(-numpy.log2(hi))))
     k_end = max(k_start, int(numpy.floor(-numpy.log2(lo))))
 
-    ticks = [2.0 ** (-k) for k in range(k_start, k_end + 1)]
-    ticks = [tick for tick in ticks if lo <= tick <= hi]
-    if not ticks:
-        return
+    ks = list(range(k_start, k_end + 1))
+    ticks_all = [2.0 ** (-k) for k in ks]
+    labels_all = [r"$1$" if k == 0 else rf"$2^{{-{k}}}$" for k in ks]
 
-    labels = [r"$1$" if k == 0 else rf"$2^{{-{k}}}$" for k in range(k_start, k_end + 1)]
-    labels = [label for tick, label in zip([2.0 ** (-k) for k in range(k_start, k_end + 1)], labels) if lo <= tick <= hi]
+    ticks = [tick for tick in ticks_all if lo <= tick <= hi]
+    labels = [label for tick, label in zip(ticks_all, labels_all) if lo <= tick <= hi]
 
     ax.xaxis.set_major_locator(FixedLocator(ticks))
     ax.xaxis.set_major_formatter(FixedFormatter(labels))
@@ -81,46 +79,25 @@ def _reference_curve(h_values, error_values, order):
 def plot_eoc_curves(histories, component_names, title_prefix="", show_reference=True):
     """
     Plot standard FEM-style convergence curves: error vs mesh size on log-log axes.
-
-    Parameters
-    ----------
-    histories : dict[str, list[dict]]
-        Mapping from label to refinement-history entries with keys
-        {"h": float, "errors": sequence[float]}.
-    component_names : sequence[str]
-        Names of the error components, e.g. ("L2",) or ("L2", "H1-semi").
-    title_prefix : str
-        Prefix for plot titles.
-    show_reference : bool
-        If True, overlay a dashed reference line using the fitted EOC of each
-        curve whenever at least two refinement levels are available.
-
-    Returns
-    -------
-    figures : list[matplotlib.figure.Figure]
-        Created figures.
     """
-
     figures = []
 
     for comp_id, comp_name in enumerate(component_names):
         fig, ax = plt.subplots()
+
         for label, entries in histories.items():
             hs = numpy.array([row["h"] for row in entries], dtype=float)
             errs = numpy.array([row["errors"][comp_id] for row in entries], dtype=float)
 
             order = estimate_eoc(hs, errs)
-            if numpy.isfinite(order):
-                curve_label = f"{label} (EOC≈{order:.2f})"
-            else:
-                curve_label = label
+            curve_label = f"{label} (EOC≈{order:.2f})"
 
-            ax.loglog(hs[::-1], errs, marker="o", linewidth=1.5, label=curve_label)
+            ax.loglog(hs, errs, marker="o", linewidth=1.5, label=curve_label)
 
             if show_reference and numpy.isfinite(order) and hs.size >= 2:
                 href, eref = _reference_curve(hs, errs, order)
                 ax.loglog(
-                    href[::-1],
+                    href,
                     eref,
                     linestyle="--",
                     linewidth=1.0,
@@ -133,8 +110,9 @@ def plot_eoc_curves(histories, component_names, title_prefix="", show_reference=
         ax.set_xlabel("mesh size h")
         ax.set_ylabel(f"{comp_name} error")
         ax.grid(True, which="both", linestyle=":")
-        ax.invert_xaxis()
+
         _set_power_of_two_ticks(ax)
+
         ax.legend()
         figures.append(fig)
 

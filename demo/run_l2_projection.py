@@ -2,6 +2,7 @@ import numpy
 import matplotlib.pyplot as plt
 import scipy.sparse
 import scipy.sparse.linalg
+import time
 from dune.grid import cartesianDomain, gridFunction
 from VEM.assembly import assemble_l2_projection
 from VEM import compare_projectors, error, mesh_size, plot_eoc_curves
@@ -31,8 +32,10 @@ def run_projection_demo(
     compare_mapped=True,
     plot_eoc=False,
     show_reference_slope=True,
+    nx0=8,
+    ny0=8,
 ):
-    def build_demo_view(nx=10, ny=10):
+    def build_demo_view(nx=nx0, ny=ny0):
         domain = cartesianDomain([0, 0], [1, 1], [nx, ny])
         return domain, aluConformGrid(domain)
 
@@ -59,6 +62,7 @@ def run_projection_demo(
 
     for space_type in spaces:
         print("Testing space:", space_type.__name__)
+        space_start = time.perf_counter()
 
         _, view = build_demo_view()
         u = make_test_function(view)
@@ -69,7 +73,8 @@ def run_projection_demo(
         old_pde_error = None
         history = []
 
-        for _ in range(refinements):
+        for level in range(refinements):
+            level_start = time.perf_counter()
             space = space_type(view)
             if space.localDofs >= 15:
                 quad_order = 10
@@ -82,6 +87,7 @@ def run_projection_demo(
             h = mesh_size(view)
 
             print(
+                "level ", level, ":",
                 "number of elements:", view.size(0),
                 "number of dofs:", len(space.mapper),
                 "mesh size h:", h,
@@ -102,12 +108,16 @@ def run_projection_demo(
                        for old_e, e in zip(old_pde_error, err)]
             else:
                 eoc = None
+            elapsed = time.perf_counter() - level_start
             print("  pde problem:", err, eoc)
+            print(f"  runtime: {elapsed:.3f} s")
             old_pde_error = err
 
             view.hierarchicalGrid.globalRefine(2)
 
+        total_elapsed = time.perf_counter() - space_start
         histories[space_type.__name__] = history
+        print(f"Total runtime for {space_type.__name__}: {total_elapsed:.3f} s")
         print()
 
     if plot_eoc:
@@ -150,8 +160,8 @@ if __name__ == "__main__":
             QuarticHermiteMappedVEMSpace,
         ),
         compare_mapped=False,
-        refinements=2,
+        refinements=3,
         plot=False,
-        plot_eoc=True,
+        plot_eoc=False,
     )
     plt.show()
