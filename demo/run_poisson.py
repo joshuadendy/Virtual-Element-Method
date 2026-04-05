@@ -31,6 +31,8 @@ def run_poisson_demo(
     spaces=(LinearLagrangeMappedVEMSpace,),
     refinements=3,
     plot=False,
+    plot_true_solution=False,
+    plot_error=False,
     stabilisation="auto",
     stabilisation_scale=1.0,
     compare_mapped=True,
@@ -81,6 +83,18 @@ def run_poisson_demo(
             return float(dofs[indices].dot(phi_vals))
 
         return uh
+
+    def make_error_functions(view, u, uh):
+        @gridFunction(view)
+        def err(e, x):
+            xg = e.geometry.toGlobal(x)
+            return u(xg) - uh(e, x)
+
+        @gridFunction(view)
+        def abs_err(e, x):
+            return abs(err(e, x))
+
+        return err, abs_err
 
     def boundary_dofs_and_values(space, exact_dofs, tol=1e-12):
         """
@@ -205,8 +219,25 @@ def run_poisson_demo(
             dofs = scipy.sparse.linalg.spsolve(matrix_bc, rhs_bc)
 
             uh = make_projected_function(view, space, dofs)
+
+            if plot_true_solution:
+                fig1 = plt.figure(figsize=(7, 5))
+                u.plot(level=2, figure=fig1)
+                fig1.suptitle(f"Exact solution")
+                plt.show()
+
             if plot:
-                uh.plot(level=1)
+                fig2 = plt.figure(figsize=(7, 5))
+                uh.plot(level=2, figure=fig2)
+                fig2.suptitle(f"Approximate solution")
+                plt.show()
+
+            if plot_error:
+                err, abs_err = make_error_functions(view, u, uh)
+                fig3 = plt.figure(figsize=(7, 5))
+                abs_err.plot(level=2, figure=fig3)
+                fig3.suptitle(f"Absolute error")
+                plt.show()
 
             err = projected_error(space, dofs, u, quad_order=max(quad_order, 6))
             history.append({"h": h, "errors": err})
@@ -267,8 +298,10 @@ if __name__ == "__main__":
             QuarticHermitePhysicalVEMSpace,
             QuarticHermiteMappedVEMSpace,
         ),
-        refinements=4,
+        refinements=3,
         plot=False,
+        plot_true_solution=False,
+        plot_error=False,
         compare_mapped=False,
         plot_eoc=False,
     )
