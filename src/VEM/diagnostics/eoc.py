@@ -110,6 +110,7 @@ def plot_eoc_curves(histories, component_names, title_prefix="", show_reference=
         ax.set_xlabel("mesh size h")
         ax.set_ylabel(f"{comp_name} error")
         ax.grid(True, which="both", linestyle=":")
+        ax.yaxis.set_minor_locator(NullLocator())
 
         _set_power_of_two_ticks(ax)
 

@@ -237,6 +237,14 @@ def run_poisson_demo(
                 fig3 = plt.figure(figsize=(7, 5))
                 abs_err.plot(level=2, figure=fig3)
                 fig3.suptitle(f"Absolute error")
+
+                # Start the colourbar at zero
+                ax = fig3.axes[0]
+                mappable = ax.collections[0] if ax.collections else ax.images[0]
+                _, vmax = mappable.get_clim()
+                mappable.set_clim(0.0, vmax)
+
+                fig3.tight_layout()
                 plt.show()
 
             err = projected_error(space, dofs, u, quad_order=max(quad_order, 6))
