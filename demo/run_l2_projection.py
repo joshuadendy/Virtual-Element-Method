@@ -29,6 +29,8 @@ def run_projection_demo(
     spaces=(QuarticHermiteMappedVEMSpace,),
     refinements=3,
     plot=True,
+    plot_true_solution=False,
+    plot_error=False,
     compare_mapped=True,
     plot_eoc=False,
     show_reference_slope=True,
@@ -51,12 +53,24 @@ def run_projection_demo(
         @gridFunction(view)
         def uh(e, x):
             space.bind(e)
-            indices = space.mapper(e)
-            phi_vals = numpy.asarray(space.evaluateLocal(x), dtype=float)
+            indices = numpy.asarray(space.mapper(e), dtype=int)
+            phi_vals = numpy.asarray(space.evaluateLocal(x), dtype=float).reshape(-1)
             local_dofs = dofs[indices]
-            return numpy.dot(local_dofs, phi_vals)
+            return float(local_dofs.dot(phi_vals))
 
         return uh
+
+    def make_error_functions(view, u, uh):
+        @gridFunction(view)
+        def err(e, x):
+            xg = e.geometry.toGlobal(x)
+            return u(xg) - uh(e, x)
+
+        @gridFunction(view)
+        def abs_err(e, x):
+            return abs(err(e, x))
+
+        return err, abs_err
 
     histories = {}
 
@@ -66,9 +80,6 @@ def run_projection_demo(
 
         _, view = build_demo_view()
         u = make_test_function(view)
-
-        if plot:
-            u.plot(level=3)
 
         old_pde_error = None
         history = []
@@ -97,8 +108,24 @@ def run_projection_demo(
             dofs = scipy.sparse.linalg.spsolve(matrix, rhs)
             uh = make_projected_function(view, space, dofs)
 
+            if plot_true_solution:
+                fig1 = plt.figure(figsize=(7, 5))
+                u.plot(level=2, figure=fig1)
+                fig1.suptitle("Exact solution")
+                plt.show()
+
             if plot:
-                uh.plot(level=1)
+                fig2 = plt.figure(figsize=(7, 5))
+                uh.plot(level=2, figure=fig2)
+                fig2.suptitle("Approximate solution")
+                plt.show()
+
+            if plot_error:
+                err, abs_err = make_error_functions(view, u, uh)
+                fig3 = plt.figure(figsize=(7, 5))
+                abs_err.plot(level=2, figure=fig3)
+                fig3.suptitle("Absolute error")
+                plt.show()
 
             err = error(view, u, uh)
             history.append({"h": h, "errors": err})
@@ -125,7 +152,7 @@ def run_projection_demo(
             histories,
             component_names=("L2",),
             title_prefix="L2 projection convergence",
-            show_reference=False if show_reference_slope else False,
+            show_reference=show_reference_slope,
         )
 
     if compare_mapped:
@@ -162,6 +189,8 @@ if __name__ == "__main__":
         compare_mapped=False,
         refinements=3,
         plot=False,
+        plot_true_solution=False,
+        plot_error=False,
         plot_eoc=False,
     )
     plt.show()
