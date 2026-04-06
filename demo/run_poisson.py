@@ -1,4 +1,5 @@
 import numpy
+import matplotlib.pyplot as plt
 import scipy.sparse.linalg
 from dune.grid import cartesianDomain, gridFunction
 from dune.alugrid import aluConformGrid
@@ -14,6 +15,8 @@ from VEM import (
     apply_dirichlet,
     assemble_poisson,
     compare_gradient_projectors,
+    mesh_size,
+    plot_eoc_curves,
     projected_error,
 )
 
@@ -25,6 +28,8 @@ def run_poisson_demo(
     stabilization="auto",
     stabilization_scale=1.0,
     compare_mapped=True,
+    plot_eoc=False,
+    show_reference_slope=True,
 ):
     def build_demo_view(level, nx0=8, ny0=8):
         """
@@ -131,21 +136,26 @@ def run_poisson_demo(
         vals = numpy.asarray(exact_dofs[ids], dtype=float)
         return ids, vals
 
+    histories = {}
+
     for space_type in spaces:
         print("Testing space:", space_type.__name__)
         old_err = None
+        history = []
 
         for level in range(refinements):
             _, view = build_demo_view(level)
             u = make_exact_solution(view)
             f = make_rhs(view)
             space = space_type(view)
+            h = mesh_size(view)
 
             quad_order = 8 if space.localDofs >= 10 else (6 if space.localDofs > 3 else 4)
 
             print(
                 "number of elements:", view.size(0),
                 "number of dofs:", len(space.mapper),
+                "mesh size h:", h,
             )
 
             rhs, matrix = assemble_poisson(
@@ -167,6 +177,8 @@ def run_poisson_demo(
                 uh.plot(level=1)
 
             err = projected_error(space, dofs, u, quad_order=max(quad_order, 6))
+            history.append({"h": h, "errors": err})
+
             if old_err is not None:
                 eoc = [
                     numpy.log(old / new) / numpy.log(2.0)
@@ -178,7 +190,16 @@ def run_poisson_demo(
             print("  projected [L2, H1-semi]:", err, eoc)
             old_err = err
 
+        histories[space_type.__name__] = history
         print()
+
+    if plot_eoc:
+        plot_eoc_curves(
+            histories,
+            component_names=("L2", "H1-semi"),
+            title_prefix="Poisson convergence",
+            show_reference=True if show_reference_slope else False,
+        )
 
     if compare_mapped:
         _, compare_view = build_demo_view(level=0)
@@ -191,21 +212,23 @@ def run_poisson_demo(
             print_per_element=False,
         )
 
-    return None
+    return histories
 
 
 if __name__ == "__main__":
     run_poisson_demo(
         spaces=(
-            LinearLagrangeSpace,
-            QuadraticLagrangeSpace,
-            CubicHermiteSpace,
-            LinearLagrangePhysicalVEMSpace,
+            # LinearLagrangeSpace,
+            # QuadraticLagrangeSpace,
+            # CubicHermiteSpace,
+            # LinearLagrangePhysicalVEMSpace,
             LinearLagrangeMappedVEMSpace,
-            CubicHermitePhysicalVEMSpace,
+            # CubicHermitePhysicalVEMSpace,
             CubicHermiteMappedVEMSpace,
         ),
-        refinements=2,
+        refinements=5,
         plot=False,
         compare_mapped=False,
+        plot_eoc=True,
     )
+    plt.show()
