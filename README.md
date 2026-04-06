@@ -127,10 +127,15 @@ The package currently exposes the following space families through `VEM`:
 - `LinearLagrangeSpace`
 - `QuadraticLagrangeSpace`
 - `CubicHermiteSpace`
+- `QuarticHermiteSpace`
 - `LinearLagrangeMappedVEMSpace`
 - `LinearLagrangePhysicalVEMSpace`
+- `QuadraticLagrangeMappedVEMSpace`
+- `QuadraticLagrangePhysicalVEMSpace`
 - `CubicHermiteMappedVEMSpace`
 - `CubicHermitePhysicalVEMSpace`
+- `QuarticHermiteMappedVEMSpace`
+- `QuarticHermitePhysicalVEMSpace`
 
 ## Notes
 
