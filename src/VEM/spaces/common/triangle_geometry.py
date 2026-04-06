@@ -3,14 +3,28 @@
 import numpy
 
 
+REFERENCE_TRIANGLE_VERTICES = numpy.array(
+    [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+    dtype=float,
+)
+
+
 def coerce_triangle_vertices(element_or_vertices):
     """
     Accept either a DUNE element or a raw (3,2) vertex array.
-    Return a float array of shape (3,2).
+    Return the physical images of the REFERENCE triangle vertices in the
+    reference-local order (0,0), (1,0), (0,1).
+
+    This is important for any code that later applies J^{-T} to mapped
+    gradients: the columns of J must correspond to the reference coordinate
+    directions, not just an arbitrary corner ordering.
     """
     if hasattr(element_or_vertices, "geometry"):
         geo = element_or_vertices.geometry
-        return numpy.array([geo.corner(i) for i in range(3)], dtype=float)
+        return numpy.array(
+            [geo.toGlobal(xhat) for xhat in REFERENCE_TRIANGLE_VERTICES],
+            dtype=float,
+        )
 
     verts = numpy.asarray(element_or_vertices, dtype=float)
     if verts.shape != (3, 2):
@@ -37,19 +51,23 @@ def triangle_area(vertices):
     return 0.5 * abs(numpy.linalg.det(j))
 
 
-def bind_affine_triangle(vertices):
+def bind_affine_triangle(element_or_vertices):
     """
     Return the standard affine-triangle data used throughout the codebase.
     """
-    verts = coerce_triangle_vertices(vertices)
+    verts = coerce_triangle_vertices(element_or_vertices)
+
     x0 = verts[0].copy()
     e1 = verts[1] - verts[0]
     e2 = verts[2] - verts[0]
+
     j = numpy.column_stack((e1, e2))
     detj = float(numpy.linalg.det(j))
     if abs(detj) <= 1e-14:
         raise ValueError("Degenerate triangle (detJ=0)")
+
     jinv = numpy.linalg.inv(j)
+
     return {
         "verts": verts,
         "x0": x0,
