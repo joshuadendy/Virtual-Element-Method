@@ -112,5 +112,5 @@ if __name__ == "__main__":
             LinearLagrangePhysicalVEMSpace
         ],
         compare_mapped=False,
-        refinements=3,
+        refinements=2,
         plot=False)
