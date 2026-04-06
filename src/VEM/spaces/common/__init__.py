@@ -8,7 +8,10 @@ from .triangle_geometry import (
     bind_affine_triangle,
 )
 from .scaled_monomials import (
+    P1_EXPONENTS,
     P3_EXPONENTS,
+    monomials,
+    monomial_gradients,
     scaled_coords,
     scaled_monomials,
     scaled_monomial_gradients,
