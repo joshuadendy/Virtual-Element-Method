@@ -92,10 +92,6 @@ def _build_local_stabilization(space, local_consistency, mode="auto", scale=1.0)
     P = numpy.asarray(space.localProjectorDofs(), dtype=float)
     I = numpy.eye(space.localDofs, dtype=float)
 
-    alpha = float(numpy.trace(local_consistency)) / max(space.localDofs, 1)
-    if abs(alpha) < 1e-14:
-        alpha = 1.0
-
     return scale * (I - P).T.dot(I - P)
 
 

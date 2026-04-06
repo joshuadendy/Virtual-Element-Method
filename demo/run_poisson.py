@@ -8,9 +8,14 @@ from VEM import (
     CubicHermiteMappedVEMSpace,
     CubicHermitePhysicalVEMSpace,
     CubicHermiteSpace,
+    QuarticHermiteMappedVEMSpace,
+    QuarticHermitePhysicalVEMSpace,
+    QuarticHermiteSpace,
     LinearLagrangeMappedVEMSpace,
     LinearLagrangePhysicalVEMSpace,
     LinearLagrangeSpace,
+    QuadraticLagrangeMappedVEMSpace,
+    QuadraticLagrangePhysicalVEMSpace,
     QuadraticLagrangeSpace,
     apply_dirichlet,
     assemble_poisson,
@@ -86,6 +91,7 @@ def run_poisson_demo(
           - clamp tangential derivative dofs on boundary edges
             * horizontal edges -> dx dof
             * vertical edges   -> dy dof
+          - clamp boundary edge-value / edge-average dofs when present
 
         This is correct for the current square-domain demo because the boundary
         tangents are coordinate-aligned. On a general polygon, tangential
@@ -93,9 +99,13 @@ def run_poisson_demo(
         """
         ids = set()
 
-        # Hermite FE / Hermite VEM local dof layout:
-        # [u(v0), ux(v0), uy(v0), u(v1), ux(v1), uy(v1), u(v2), ux(v2), uy(v2), ...]
-        if space.localDofs in (10, 12):
+        if space.localDofs in (10, 12, 15, 18):
+            edge_slots = []
+            if space.localDofs == 15:
+                edge_slots = [9, 10, 11]
+            elif space.localDofs == 18:
+                edge_slots = [9, 10, 11]
+
             for e in space.view.elements:
                 idx = numpy.asarray(space.mapper(e), dtype=int)
 
@@ -109,15 +119,24 @@ def run_poisson_demo(
                     on_top = abs(y - 1.0) < tol
 
                     if on_left or on_right or on_bottom or on_top:
-                        ids.add(int(idx[base]))  # value dof
+                        ids.add(int(idx[base]))
 
-                    # tangential derivative on horizontal sides is du/dx
                     if on_bottom or on_top:
                         ids.add(int(idx[base + 1]))
 
-                    # tangential derivative on vertical sides is du/dy
                     if on_left or on_right:
                         ids.add(int(idx[base + 2]))
+
+                for slot in edge_slots:
+                    xhat = numpy.asarray(space.points[slot], dtype=float)
+                    x, y = e.geometry.toGlobal(xhat)
+                    if (
+                        abs(x) < tol
+                        or abs(x - 1.0) < tol
+                        or abs(y) < tol
+                        or abs(y - 1.0) < tol
+                    ):
+                        ids.add(int(idx[slot]))
 
         else:
             for e in space.view.elements:
@@ -150,7 +169,14 @@ def run_poisson_demo(
             space = space_type(view)
             h = mesh_size(view)
 
-            quad_order = 8 if space.localDofs >= 10 else (6 if space.localDofs > 3 else 4)
+            if space.localDofs >= 15:
+                quad_order = 10
+            elif space.localDofs >= 10:
+                quad_order = 8
+            elif space.localDofs > 3:
+                quad_order = 6
+            else:
+                quad_order = 4
 
             print(
                 "number of elements:", view.size(0),
@@ -203,12 +229,12 @@ def run_poisson_demo(
 
     if compare_mapped:
         _, compare_view = build_demo_view(level=0)
-        space_physical = CubicHermitePhysicalVEMSpace(compare_view)
-        space_mapped = CubicHermiteMappedVEMSpace(compare_view)
+        space_physical = QuarticHermitePhysicalVEMSpace(compare_view)
+        space_mapped = QuarticHermiteMappedVEMSpace(compare_view)
         return compare_gradient_projectors(
             space_physical,
             space_mapped,
-            quad_order=8,
+            quad_order=10,
             print_per_element=False,
         )
 
@@ -219,16 +245,21 @@ if __name__ == "__main__":
     run_poisson_demo(
         spaces=(
             LinearLagrangeSpace,
-            # QuadraticLagrangeSpace,
+            QuadraticLagrangeSpace,
             CubicHermiteSpace,
+            QuarticHermiteSpace,
             LinearLagrangePhysicalVEMSpace,
             LinearLagrangeMappedVEMSpace,
+            QuadraticLagrangePhysicalVEMSpace,
+            QuadraticLagrangeMappedVEMSpace,
             CubicHermitePhysicalVEMSpace,
             CubicHermiteMappedVEMSpace,
+            QuarticHermitePhysicalVEMSpace,
+            QuarticHermiteMappedVEMSpace,
         ),
-        refinements=3,
+        refinements=1,
         plot=False,
         compare_mapped=False,
-        plot_eoc=False,
+        plot_eoc=True,
     )
     plt.show()
