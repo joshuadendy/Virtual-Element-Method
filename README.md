@@ -1,6 +1,6 @@
 # Virtual Element Method
 
-A small Python implementation of finite element and virtual element constructions on triangular meshes, aimed at demonstrating the reference mapping methodology for virtual element methods.
+A small Python implementation of finite element and virtual element constructions on triangular meshes, aimed at demonstrating the reference mapping methodology for virtual element methods that was developed in [VEM_maps.pdf](VEM_maps.pdf).
 
 ## What this repository does
 
