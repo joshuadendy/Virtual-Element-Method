@@ -14,7 +14,7 @@ from VEM import (
     LinearLagrangePhysicalVEMSpace
 )
 
-# We will use a triangular grid for this exercise
+# Use a triangular grid for demo
 from dune.alugrid import aluConformGrid
 
 def run_projection_demo(spaces=[CubicHermiteMappedVEMSpace], refinements=3,

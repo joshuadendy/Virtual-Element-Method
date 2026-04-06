@@ -17,18 +17,16 @@ from ...common.vertex_scaling import build_vertex_effective_h
 
 class CubicHermiteMappedVEMSpace(SpaceBase):
     """
-    k=3 Hermite-style VEM space with separate value and gradient projectors.
+    The value projector \( \Pi_0 \) is assembled once on the reference triangle.
+    The gradient projector \( \Pi_1 \) is also assembled on the reference triangle
+    and mapped to each physical element according to
 
-    The value projector Pi_0 is assembled once on the reference triangle. The
-    gradient projector Pi_1 is also assembled once on the reference triangle via
-    the variational definition, then mapped onto each physical element using
+    \Pi_1^E = F_{\mathrm{curl}}(F^{-*}(\Pi_1^{\hat E})).
 
-        Pi^E_1 = F_curl( F^{-*}( Pi^{Ê}_1 ) )
-
-    In code, the final mapped gradient basis values are formed by:
-      1. evaluating the reference projected gradient basis,
-      2. applying the Hermite dof/basis transform M,
-      3. applying the Jacobian factor on the vector side.
+    In code, the mapped gradient basis is formed by
+    1. evaluating the reference projected gradient basis,
+    2. applying the Hermite DOF/basis transform M,
+    3. applying the Jacobian factor on the vector side.
     """
 
     def __init__(self, view):
@@ -308,8 +306,10 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         x_center = self.xE_hat
 
         # Volume term:
-        #   ∫_Ê Pi_1[φ_j] · q̂
-        # = -∫_Ê Pi_0[φ_j] div q̂ + Σ_edges ∫_ê Pi^ê_0[φ_j] (n̂·q̂)
+        #    \int_{\hat E} \Pi_1[\phi_j] \cdot \hat q
+        #    = -\int_{\hat E} \Pi_0[\phi_j] \nabla \cdot \hat q
+        #      + \sum_{e \subset \partial \hat E}
+        #        \int_e \Pi_0^e[\phi_j] (\hat n \cdot \hat q).
         for p in self._momentQuad:
             xhat = p.position
             w = float(p.weight)

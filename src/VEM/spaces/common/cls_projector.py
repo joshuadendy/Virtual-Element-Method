@@ -7,7 +7,9 @@ def solve_cls_kkt_all_rhs(A, C, G):
     """
     Solve, for all right-hand sides at once,
 
-        min ||A c_j - e_j||^2   subject to   C c_j = G[:, j]
+    \min_{c_j} |A c_j - e_j|^2
+    subject to
+    C c_j = G_{:,j},
 
     returning the coefficient matrix X whose columns are the c_j.
     """
