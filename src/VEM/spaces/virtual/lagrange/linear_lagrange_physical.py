@@ -1,7 +1,7 @@
 import numpy
 
 from ...base import SpaceBase
-from ...common.scaled_monomials import P1_EXPONENTS, scaled_monomials
+from ...common.scaled_monomials import P1_EXPONENTS, scaled_monomial_gradients, scaled_monomials
 from ...common.triangle_geometry import bind_affine_triangle
 
 
@@ -24,6 +24,7 @@ class LinearLagrangePhysicalVEMSpace(SpaceBase):
         self.vertices = numpy.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], dtype=float)
 
         self.J = numpy.eye(2)
+        self.Jinv = numpy.eye(2)
         self.x0 = numpy.array([0.0, 0.0], dtype=float)
         self.xE = numpy.array([1.0 / 3.0, 1.0 / 3.0], dtype=float)
         self.hE = numpy.sqrt(2.0)
@@ -38,6 +39,7 @@ class LinearLagrangePhysicalVEMSpace(SpaceBase):
         self.vertices[2] = data["e2"]
         self.x0 = data["x0"].copy()
         self.J = data["J"].copy()
+        self.Jinv = data["Jinv"].copy()
         self.xE = data["xE"].copy()
         self.hE = float(data["hE"])
 
@@ -50,12 +52,20 @@ class LinearLagrangePhysicalVEMSpace(SpaceBase):
     def _poly_basis_value(self, x_phys):
         return scaled_monomials(x_phys, self.xE, self.hE, P1_EXPONENTS)
 
+    def _poly_basis_grad_value(self, x_phys):
+        dmx, dmy = scaled_monomial_gradients(x_phys, self.xE, self.hE, P1_EXPONENTS)
+        return numpy.column_stack((dmx, dmy))
+
     def _physical_point(self, xhat):
         return self.x0 + self.J.dot(numpy.asarray(xhat, dtype=float))
 
     def evaluateLocal(self, x):
         x_phys = self._physical_point(x)
         return self._Pi0Coeffs.T.dot(self._poly_basis_value(x_phys))
+
+    def evaluateLocalGradient(self, x):
+        x_phys = self._physical_point(x)
+        return self._Pi0Coeffs.T.dot(self._poly_basis_grad_value(x_phys))
 
     def interpolate(self, gf):
         dofs = numpy.zeros(len(self.mapper))

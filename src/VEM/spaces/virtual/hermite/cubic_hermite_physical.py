@@ -112,7 +112,8 @@ class CubicHermitePhysicalVEMSpace(SpaceBase):
         return scaled_monomials(x_phys, self.xE, self.hE, P3_EXPONENTS)
 
     def _p3_basis_grad_phys(self, x_phys):
-        return scaled_monomial_gradients(x_phys, self.xE, self.hE, P3_EXPONENTS)
+        dmx, dmy = scaled_monomial_gradients(x_phys, self.xE, self.hE, P3_EXPONENTS)
+        return numpy.column_stack((dmx, dmy))
 
     def _m1_basis_phys(self, x_phys):
         return scaled_monomials(x_phys, self.xE, self.hE, P1_EXPONENTS)
@@ -126,10 +127,10 @@ class CubicHermitePhysicalVEMSpace(SpaceBase):
         row = 0
         for iv, xv in enumerate(verts):
             A[row, :] = self._p3_basis_phys(xv)
-            dmx, dmy = self._p3_basis_grad_phys(xv)
+            grad = self._p3_basis_grad_phys(xv)
             h_a = self._hV_local[iv]
-            A[row + 1, :] = h_a * dmx
-            A[row + 2, :] = h_a * dmy
+            A[row + 1, :] = h_a * grad[:, 0]
+            A[row + 2, :] = h_a * grad[:, 1]
             row += 3
 
         mom_rows = numpy.zeros((3, self.polyDim), dtype=float)
@@ -148,8 +149,39 @@ class CubicHermitePhysicalVEMSpace(SpaceBase):
         x_phys = self._physical_point(x)
         return self._Pi0Coeffs.T.dot(self._p3_basis_phys(x_phys))
 
+    def evaluateLocalGradient(self, x):
+        x_phys = self._physical_point(x)
+        return self._Pi0Coeffs.T.dot(self._p3_basis_grad_phys(x_phys))
+
     def evaluatePhysical(self, x_phys):
         return self.evaluateLocal(self._reference_point(x_phys))
+
+    def localProjectorDofs(self):
+        P = numpy.zeros((self.localDofs, self.localDofs), dtype=float)
+        ref_vertices = [
+            numpy.array([0.0, 0.0]),
+            numpy.array([1.0, 0.0]),
+            numpy.array([0.0, 1.0]),
+        ]
+
+        row = 0
+        for iv, xhat_v in enumerate(ref_vertices):
+            P[row, :] = self.evaluateLocal(xhat_v)
+            grad = self.evaluateLocalGradient(xhat_v)
+            h_a = self._hV_local[iv]
+            P[row + 1, :] = h_a * grad[:, 0]
+            P[row + 2, :] = h_a * grad[:, 1]
+            row += 3
+
+        for p in self._momentQuad:
+            xhat = p.position
+            w = float(p.weight * abs(self.detJ)) / self.area
+            x_phys = self._physical_point(xhat)
+            P[9:12, :] += w * numpy.outer(
+                self._m1_basis_phys(x_phys),
+                self.evaluateLocal(xhat),
+            )
+        return P
 
     def interpolate(self, gf):
         dofs = numpy.zeros(len(self.mapper), dtype=float)

@@ -102,15 +102,15 @@ def run_projection_demo(spaces=[CubicHermiteMappedVEMSpace], refinements=3,
 
 if __name__ == "__main__":
     run_projection_demo(
-        spaces=[
+        spaces=(
             LinearLagrangeSpace,
             QuadraticLagrangeSpace,
             CubicHermiteSpace,
             CubicHermiteMappedVEMSpace,
             CubicHermitePhysicalVEMSpace,
             LinearLagrangeMappedVEMSpace,
-            LinearLagrangePhysicalVEMSpace
-        ],
+            LinearLagrangePhysicalVEMSpace,
+            ),
         compare_mapped=False,
         refinements=3,
         plot=False)
