@@ -1,7 +1,37 @@
 import numpy
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FixedLocator, FixedFormatter, NullLocator
 
 from ..spaces.common.triangle_geometry import coerce_triangle_vertices
+
+
+def _set_power_of_two_ticks(ax):
+    """
+    Label the x-axis only at negative powers of two: 1, 2^{-1}, 2^{-2}, ...
+    within the visible range.
+    """
+
+    xmin, xmax = ax.get_xlim()
+    lo = float(min(xmin, xmax))
+    hi = float(max(xmin, xmax))
+
+    if not (numpy.isfinite(lo) and numpy.isfinite(hi)) or lo <= 0.0:
+        return
+
+    k_start = max(0, int(numpy.ceil(-numpy.log2(hi))))
+    k_end = max(k_start, int(numpy.floor(-numpy.log2(lo))))
+
+    ticks = [2.0 ** (-k) for k in range(k_start, k_end + 1)]
+    ticks = [tick for tick in ticks if lo <= tick <= hi]
+    if not ticks:
+        return
+
+    labels = [r"$1$" if k == 0 else rf"$2^{{-{k}}}$" for k in range(k_start, k_end + 1)]
+    labels = [label for tick, label in zip([2.0 ** (-k) for k in range(k_start, k_end + 1)], labels) if lo <= tick <= hi]
+
+    ax.xaxis.set_major_locator(FixedLocator(ticks))
+    ax.xaxis.set_major_formatter(FixedFormatter(labels))
+    ax.xaxis.set_minor_locator(NullLocator())
 
 
 def mesh_size(view):
@@ -88,7 +118,7 @@ def plot_eoc_curves(histories, component_names, title_prefix="", show_reference=
             else:
                 curve_label = label
 
-            ax.loglog(hs, errs, marker="o", linewidth=1.5, label=curve_label)
+            ax.loglog(hs[::-1], errs, marker="o", linewidth=1.5, label=curve_label)
 
             if show_reference and numpy.isfinite(order) and hs.size >= 2:
                 href, eref = _reference_curve(hs, errs, order)
@@ -107,6 +137,7 @@ def plot_eoc_curves(histories, component_names, title_prefix="", show_reference=
         ax.set_ylabel(f"{comp_name} error")
         ax.grid(True, which="both", linestyle=":")
         ax.invert_xaxis()
+        _set_power_of_two_ticks(ax)
         ax.legend()
         figures.append(fig)
 
