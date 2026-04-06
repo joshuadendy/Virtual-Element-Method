@@ -295,6 +295,20 @@ class QuarticHermitePhysicalVEMSpace(SpaceBase):
         x_phys = self._physical_point(x)
         return self._Pi0Coeffs.T.dot(self._p4_basis_phys(x_phys))
 
+    def _evaluateLocalValueProjectionGradient(self, x):
+        """
+        Gradient of the scalar value projection Pi_0.
+
+        This is used only when applying Hermite derivative dofs to the projected
+        scalar polynomial inside localProjectorDofs(). The Poisson consistency
+        term should continue to use evaluateLocalGradient(), i.e. the separate
+        gradient projector Pi_1.
+        """
+        x_phys = self._physical_point(x)
+        dmx, dmy = scaled_monomial_gradients(x_phys, self.xE, self.hE, P4_EXPONENTS)
+        grad_basis = numpy.column_stack((dmx, dmy))
+        return self._Pi0Coeffs.T.dot(grad_basis)
+
     def evaluateLocalGradient(self, x):
         x_phys = self._physical_point(x)
         return self._Pi1Coeffs.T.dot(self._vector_p3_basis_phys(x_phys))
@@ -305,7 +319,7 @@ class QuarticHermitePhysicalVEMSpace(SpaceBase):
         row = 0
         for iv, xhat_v in enumerate(self._ref_vertices):
             P[row, :] = self.evaluateLocal(xhat_v)
-            grad = self.evaluateLocalGradient(xhat_v)
+            grad = self._evaluateLocalValueProjectionGradient(xhat_v)
             h_a = self._hV_local[iv]
             P[row + 1, :] = h_a * grad[:, 0]
             P[row + 2, :] = h_a * grad[:, 1]

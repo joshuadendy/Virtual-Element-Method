@@ -1,6 +1,7 @@
 import numpy
 import matplotlib.pyplot as plt
 import scipy.sparse.linalg
+import time
 from dune.grid import cartesianDomain, gridFunction
 from dune.alugrid import aluConformGrid
 
@@ -30,13 +31,15 @@ def run_poisson_demo(
     spaces=(LinearLagrangeMappedVEMSpace,),
     refinements=3,
     plot=False,
-    stabilization="auto",
-    stabilization_scale=1.0,
+    stabilisation="auto",
+    stabilisation_scale=1.0,
     compare_mapped=True,
     plot_eoc=False,
     show_reference_slope=True,
+    nx0=8,
+    ny0=8,
 ):
-    def build_demo_view(level, nx0=8, ny0=8):
+    def build_demo_view(level, nx0=nx0, ny0=ny0):
         """
         Rebuild a fresh structured grid on each level.
         """
@@ -159,10 +162,12 @@ def run_poisson_demo(
 
     for space_type in spaces:
         print("Testing space:", space_type.__name__)
+        space_start = time.perf_counter()
         old_err = None
         history = []
 
         for level in range(refinements):
+            level_start = time.perf_counter()
             _, view = build_demo_view(level)
             u = make_exact_solution(view)
             f = make_rhs(view)
@@ -179,6 +184,7 @@ def run_poisson_demo(
                 quad_order = 4
 
             print(
+                "level ", level, ":",
                 "number of elements:", view.size(0),
                 "number of dofs:", len(space.mapper),
                 "mesh size h:", h,
@@ -188,8 +194,8 @@ def run_poisson_demo(
                 space,
                 f,
                 quad_order=quad_order,
-                stabilization=stabilization,
-                stabilization_scale=stabilization_scale,
+                stabilisation=stabilisation,
+                stabilisation_scale=stabilisation_scale,
             )
 
             exact_dofs = space.interpolate(u)
@@ -213,10 +219,14 @@ def run_poisson_demo(
             else:
                 eoc = None
 
+            elapsed = time.perf_counter() - level_start
             print("  projected [L2, H1-semi]:", err, eoc)
+            print(f"  runtime: {elapsed:.3f} s")
             old_err = err
 
+        total_elapsed = time.perf_counter() - space_start
         histories[space_type.__name__] = history
+        print(f"Total runtime for {space_type.__name__}: {total_elapsed:.3f} s")
         print()
 
     if plot_eoc:
@@ -257,9 +267,9 @@ if __name__ == "__main__":
             QuarticHermitePhysicalVEMSpace,
             QuarticHermiteMappedVEMSpace,
         ),
-        refinements=1,
+        refinements=4,
         plot=False,
         compare_mapped=False,
-        plot_eoc=True,
+        plot_eoc=False,
     )
     plt.show()
