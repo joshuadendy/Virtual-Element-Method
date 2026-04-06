@@ -103,7 +103,7 @@ def run_projection_demo(
             histories,
             component_names=("L2",),
             title_prefix="L2 projection convergence",
-            show_reference=True if show_reference_slope else False,
+            show_reference=False if show_reference_slope else False,
         )
 
     if compare_mapped:
@@ -133,7 +133,7 @@ if __name__ == "__main__":
             CubicHermiteMappedVEMSpace,
         ),
         compare_mapped=False,
-        refinements=2,
+        refinements=3,
         plot=False,
         plot_eoc=False,
     )

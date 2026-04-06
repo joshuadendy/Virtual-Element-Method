@@ -91,7 +91,7 @@ class CubicHermitePhysicalVEMSpace(SpaceBase):
             self.mapper,
             measure="adjacent_edge_average",
         )
-        self._hV_local = numpy.array([self.hE_hat, self.hE_hat, self.hE_hat], dtype=float)
+        self._hV_local = self._reference_vertex_h()
 
         self.bind(numpy.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], dtype=float))
 
@@ -101,6 +101,17 @@ class CubicHermitePhysicalVEMSpace(SpaceBase):
         r = 0.5 * (pts + 1.0)
         w = 0.5 * wts
         return r, w
+
+    @staticmethod
+    def _reference_vertex_h():
+        e01 = 1.0
+        e12 = numpy.sqrt(2.0)
+        e20 = 1.0
+        return numpy.array([
+            0.5 * (e01 + e20),
+            0.5 * (e01 + e12),
+            0.5 * (e12 + e20),
+        ], dtype=float)
 
     @staticmethod
     def _solve_dense_system(A, B):
@@ -118,7 +129,7 @@ class CubicHermitePhysicalVEMSpace(SpaceBase):
                 self._vertex_h[int(idx[6])],
             ], dtype=float)
         else:
-            self._hV_local = numpy.array([self.hE_hat, self.hE_hat, self.hE_hat], dtype=float)
+            self._hV_local = self._reference_vertex_h()
 
         data = bind_affine_triangle(element_or_vertices)
         self.vertices[0] = data["x0"]
