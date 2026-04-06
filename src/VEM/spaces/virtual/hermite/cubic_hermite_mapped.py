@@ -406,7 +406,7 @@ class CubicHermiteMappedVEMSpace(SpaceBase):
         return self.evaluateLocal(self._reference_point(x_phys))
 
     # -------------------------------------------------------------------------
-    # Projector-on-dofs matrix used by stabilization
+    # Projector-on-dofs matrix used by stabilisation
     # -------------------------------------------------------------------------
 
     def localProjectorDofs(self):

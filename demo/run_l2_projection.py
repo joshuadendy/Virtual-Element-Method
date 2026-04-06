@@ -32,8 +32,10 @@ def run_projection_demo(
     compare_mapped=True,
     plot_eoc=False,
     show_reference_slope=True,
+    nx0=8,
+    ny0=8,
 ):
-    def build_demo_view(nx=10, ny=10):
+    def build_demo_view(nx=nx0, ny=ny0):
         domain = cartesianDomain([0, 0], [1, 1], [nx, ny])
         return domain, aluConformGrid(domain)
 

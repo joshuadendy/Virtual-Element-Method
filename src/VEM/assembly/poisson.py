@@ -3,7 +3,7 @@ import scipy.sparse
 from dune.geometry import quadratureRule
 
 
-def assemble_poisson(space, force, quad_order=6, stabilization="auto", stabilization_scale=1.0):
+def assemble_poisson(space, force, quad_order=6, stabilisation="auto", stabilisation_scale=1.0):
     """
     Assemble a projected Poisson/Laplace operator using the space's local value
     projector and local projected gradients.
@@ -17,11 +17,11 @@ def assemble_poisson(space, force, quad_order=6, stabilization="auto", stabiliza
         Grid function or callable evaluated as force(e, xhat).
     quad_order : int
         Triangle quadrature order.
-    stabilization : {"auto", "none"} or bool
-        In "auto" mode, a dof-space stabilization is added whenever the space
+    stabilisation : {"auto", "none"} or bool
+        In "auto" mode, a dof-space stabilisation is added whenever the space
         provides localProjectorDofs().
-    stabilization_scale : float
-        Scalar multiplier on the stabilization term.
+    stabilisation_scale : float
+        Scalar multiplier on the stabilisation term.
 
     Returns
     -------
@@ -55,11 +55,11 @@ def assemble_poisson(space, force, quad_order=6, stabilization="auto", stabiliza
             rhs[indices] += w * float(force(e, xhat)) * phi_vals
             local_matrix += w * grad_vals.dot(grad_vals.T)
 
-        stab = _build_local_stabilization(
+        stab = _build_local_stabilisation(
             space,
             local_matrix,
-            mode=stabilization,
-            scale=stabilization_scale,
+            mode=stabilisation,
+            scale=stabilisation_scale,
         )
         if stab is not None:
             local_matrix += stab
@@ -79,19 +79,18 @@ def assemble_poisson(space, force, quad_order=6, stabilization="auto", stabiliza
     return rhs, matrix
 
 
-def _build_local_stabilization(space, local_consistency, mode="auto", scale=1.0):
+def _build_local_stabilisation(space, local_consistency, mode="auto", scale=1.0):
     if mode in (False, None, "none"):
         return None
-
     if mode != "auto":
-        raise ValueError(f"Unknown stabilization mode {mode!r}")
-
+        raise ValueError(f"Unknown stabilisation mode {mode!r}")
     if not hasattr(space, "localProjectorDofs"):
         return None
 
     P = numpy.asarray(space.localProjectorDofs(), dtype=float)
     I = numpy.eye(space.localDofs, dtype=float)
 
+    # alpha_E = numpy.trace(local_consistency) / space.localDofs
     return scale * (I - P).T.dot(I - P)
 
 
