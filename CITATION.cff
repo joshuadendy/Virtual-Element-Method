@@ -1,0 +1,9 @@
+cff-version: 1.0.0
+message: "If you use this software, feel free to cite it as below."
+authors:
+- family-names: "Dendy"
+  given-names: "Joshua"
+title: "Virtual-Element-Method"
+version: 1.0.0
+date-released: 2026-03-31
+url: "https://github.com/joshuadendy/Virtual-Element-Method"
