@@ -7,7 +7,7 @@ def solve_cls_kkt_all_rhs(A, C, G):
     """
     Solve, for all right-hand sides at once,
 
-    \min_{c_j} |A c_j - e_j|^2
+    min_{c_j} |A c_j - e_j|^2
     subject to
     C c_j = G_{:,j},
 
