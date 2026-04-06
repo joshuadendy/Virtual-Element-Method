@@ -110,7 +110,8 @@ if __name__ == "__main__":
             LinearLagrangeMappedVEMSpace,
             CubicHermitePhysicalVEMSpace,
             CubicHermiteMappedVEMSpace,
-            ),
+        ),
         compare_mapped=False,
         refinements=2,
-        plot=False)
+        plot=False
+    )
