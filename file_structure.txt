@@ -1,4 +1,4 @@
-l2proj/
+src/VEM
   spaces/
     base.py
     common/
@@ -9,20 +9,21 @@ l2proj/
       vertex_scaling.py
     finite/
       lagrange/
-        lagrange.py
+        linear_lagrange.py
+        quadratic_lagrange
       hermite/
-        hermite.py
+        cubic_hermite.py
     virtual/
       lagrange/
-        lagrange_physical.py
-        lagrange_mapped.py
+        linear_lagrange_physical.py
+        linear_lagrange_mapped.py
       hermite/
-        hermite_physical.py
-        hermite_mapped.py
+        cubic_hermite_physical.py
+        cubic_hermite_mapped.py
   assembly/
     l2_projection.py
   diagnostics/
     error.py
     compare_projectors.py
-  demo/
-    run_l2_projection.py
+demo/
+  run_l2_projection.py

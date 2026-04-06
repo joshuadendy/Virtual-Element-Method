@@ -1,1 +1,0 @@
-"""Shared utilities for element geometry, bases, projectors, and mappings."""

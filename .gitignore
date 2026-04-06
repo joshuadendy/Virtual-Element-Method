@@ -1,0 +1,7 @@
+dgfparser.log
+l2proj_orig.py
+l2proj.py
+src/VEM.egg-info/
+results.txt
+.DS_Store
+**/__pycache__/*
