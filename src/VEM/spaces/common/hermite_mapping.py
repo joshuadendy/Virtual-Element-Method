@@ -15,9 +15,13 @@ def build_cubic_hermite_transform(J):
     return M
 
 
-def build_k3_mapped_transform(J, Jinv, hV_hat, hV_local, hE, hE_hat):
+def build_k3_mapped_transform(J, hV_hat, hV_local, constraint_transform=None):
     """
     Transform matrix for the k=3 mapped Hermite-VEM basis.
+
+    The first nine slots correspond to the standard cubic Hermite vertex value and
+    scaled-gradient dofs. The final three slots correspond to the interior moment
+    functionals.
     """
     M = numpy.eye(12, dtype=float)
 
@@ -25,6 +29,10 @@ def build_k3_mapped_transform(J, Jinv, hV_hat, hV_local, hE, hE_hat):
         sl = slice(base + 1, base + 3)
         M[sl, sl] = (hV_hat[i] / hV_local[i]) * J
 
-    M[9, 9] = 1.0
-    M[10:12, 10:12] = (hE / hE_hat) * Jinv.T
+    if constraint_transform is not None:
+        block = numpy.asarray(constraint_transform, dtype=float)
+        if block.shape != (3, 3):
+            raise ValueError("constraint_transform must have shape (3, 3).")
+        M[9:12, 9:12] = block
+
     return M
