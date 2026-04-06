@@ -27,9 +27,6 @@ def run_poisson_demo(
     def build_demo_view(level, nx0=8, ny0=8):
         """
         Rebuild a fresh structured grid on each level.
-
-        This gives a clean h-sequence and avoids carrying old geometry/view state
-        through in-place refinement while debugging the mapped-gradient pipeline.
         """
         nx = nx0 * (2 ** level)
         ny = ny0 * (2 ** level)
@@ -64,44 +61,73 @@ def run_poisson_demo(
         @gridFunction(view)
         def uh(e, x):
             space.bind(e)
-            indices = space.mapper(e)
+            indices = numpy.asarray(space.mapper(e), dtype=int)
             phi_vals = numpy.asarray(space.evaluateLocal(x), dtype=float).reshape(-1)
             return float(dofs[indices].dot(phi_vals))
 
         return uh
 
-    def boundary_value_local_dofs(space):
+    def boundary_dofs_and_values(space, exact_dofs, tol=1e-12):
         """
-        Offsets of LOCAL dofs that represent boundary trace values.
+        Return Dirichlet dof ids and values.
 
-        For the current repo:
-          - P1, P2, and linear Lagrange-type VEM spaces: all local dofs are values.
-          - Cubic Hermite FE and cubic Hermite-type VEM spaces: only the vertex VALUE
-            dofs are essential for the H^1_0 Dirichlet condition; vertex derivative
-            dofs must NOT be clamped.
+        For pure value spaces:
+          all boundary-associated local dofs are clamped.
+
+        For Hermite spaces on the unit square:
+          - clamp boundary vertex value dofs
+          - clamp tangential derivative dofs on boundary edges
+            * horizontal edges -> dx dof
+            * vertical edges   -> dy dof
+
+        This is correct for the current square-domain demo because the boundary
+        tangents are coordinate-aligned. On a general polygon, tangential
+        constraints would be linear combinations of dx/dy dofs instead.
         """
-        if space.localDofs in (10, 12):
-            return numpy.array([0, 3, 6], dtype=int)
-        return numpy.arange(space.localDofs, dtype=int)
-
-    def boundary_dofs(space, tol=1e-12):
         ids = set()
-        local_value_dofs = boundary_value_local_dofs(space)
 
-        for e in space.view.elements:
-            idx = numpy.asarray(space.mapper(e), dtype=int)
-            for ldof in local_value_dofs:
-                xhat = numpy.asarray(space.points[ldof], dtype=float)
-                xphys = e.geometry.toGlobal(xhat)
-                if (
-                    abs(xphys[0]) < tol
-                    or abs(xphys[0] - 1.0) < tol
-                    or abs(xphys[1]) < tol
-                    or abs(xphys[1] - 1.0) < tol
-                ):
-                    ids.add(int(idx[ldof]))
+        # Hermite FE / Hermite VEM local dof layout:
+        # [u(v0), ux(v0), uy(v0), u(v1), ux(v1), uy(v1), u(v2), ux(v2), uy(v2), ...]
+        if space.localDofs in (10, 12):
+            for e in space.view.elements:
+                idx = numpy.asarray(space.mapper(e), dtype=int)
 
-        return numpy.array(sorted(ids), dtype=int)
+                for base in (0, 3, 6):
+                    xhat = numpy.asarray(space.points[base], dtype=float)
+                    x, y = e.geometry.toGlobal(xhat)
+
+                    on_left = abs(x) < tol
+                    on_right = abs(x - 1.0) < tol
+                    on_bottom = abs(y) < tol
+                    on_top = abs(y - 1.0) < tol
+
+                    if on_left or on_right or on_bottom or on_top:
+                        ids.add(int(idx[base]))  # value dof
+
+                    # tangential derivative on horizontal sides is du/dx
+                    if on_bottom or on_top:
+                        ids.add(int(idx[base + 1]))
+
+                    # tangential derivative on vertical sides is du/dy
+                    if on_left or on_right:
+                        ids.add(int(idx[base + 2]))
+
+        else:
+            for e in space.view.elements:
+                idx = numpy.asarray(space.mapper(e), dtype=int)
+                for ldof, xhat in enumerate(space.points):
+                    x, y = e.geometry.toGlobal(numpy.asarray(xhat, dtype=float))
+                    if (
+                        abs(x) < tol
+                        or abs(x - 1.0) < tol
+                        or abs(y) < tol
+                        or abs(y - 1.0) < tol
+                    ):
+                        ids.add(int(idx[ldof]))
+
+        ids = numpy.array(sorted(ids), dtype=int)
+        vals = numpy.asarray(exact_dofs[ids], dtype=float)
+        return ids, vals
 
     for space_type in spaces:
         print("Testing space:", space_type.__name__)
@@ -129,9 +155,9 @@ def run_poisson_demo(
             )
 
             exact_dofs = space.interpolate(u)
-            bdy = boundary_dofs(space)
+            bdy_ids, bdy_vals = boundary_dofs_and_values(space, exact_dofs)
 
-            rhs_bc, matrix_bc = apply_dirichlet(matrix, rhs, bdy, exact_dofs[bdy])
+            rhs_bc, matrix_bc = apply_dirichlet(matrix, rhs, bdy_ids, bdy_vals)
             dofs = scipy.sparse.linalg.spsolve(matrix_bc, rhs_bc)
 
             uh = make_projected_function(view, space, dofs)
@@ -140,7 +166,10 @@ def run_poisson_demo(
 
             err = projected_error(space, dofs, u, quad_order=max(quad_order, 6))
             if old_err is not None:
-                eoc = [numpy.log(old / new) / numpy.log(2.0) for old, new in zip(old_err, err)]
+                eoc = [
+                    numpy.log(old / new) / numpy.log(2.0)
+                    for old, new in zip(old_err, err)
+                ]
             else:
                 eoc = None
 
