@@ -10,9 +10,10 @@ This repository provides:
   - linear Lagrange
   - quadratic Lagrange
   - cubic Hermite
+  - quartic Hermite
 - **Virtual element spaces** on triangles:
-  - linear Lagrange-type VEM
-  - cubic Hermite-type VEM
+  - k=1,2 Lagrange-type VEM
+  - k=3,4 Hermite-type VEM
   - both **physical** and **mapped/reference-based** variants
 - **Assembly routines** for:
   - an **L2 projection** problem
