@@ -122,6 +122,17 @@ class QuarticHermitePhysicalVEMSpace(SpaceBase):
             return numpy.linalg.lstsq(A, B, rcond=None)[0]
 
     def bind(self, element_or_vertices):
+        self._bind_geometry(element_or_vertices)
+
+        A, C = self._build_A_and_C()
+        self._Pi0Coeffs = solve_cls_kkt_all_rhs(
+            A=A,
+            C=C,
+            G=self._constraint_rhs_selector,
+        )
+        self._Pi1Coeffs = self._build_gradient_projector()
+
+    def _bind_geometry(self, element_or_vertices):
         if hasattr(element_or_vertices, "geometry"):
             idx = self.mapper(element_or_vertices)
             self._hV_local = numpy.array([
@@ -144,14 +155,6 @@ class QuarticHermitePhysicalVEMSpace(SpaceBase):
         self.xE = data["xE"].copy()
         self.hE = float(data["hE"])
 
-        A, C = self._build_A_and_C()
-        self._Pi0Coeffs = solve_cls_kkt_all_rhs(
-            A=A,
-            C=C,
-            G=self._constraint_rhs_selector,
-        )
-        self._Pi1Coeffs = self._build_gradient_projector()
-
     def _physical_point(self, xhat):
         return self.x0 + self.J.dot(numpy.asarray(xhat, dtype=float))
 
@@ -167,6 +170,10 @@ class QuarticHermitePhysicalVEMSpace(SpaceBase):
 
     def _m2_basis_phys(self, x_phys):
         return scaled_monomials(x_phys, self.xE, self.hE, P2_EXPONENTS)
+
+    def _moment_basis_phys(self, x_phys):
+        """Basis of the interior moment dofs used by localProjectorDofs() and interpolate()."""
+        return self._m2_basis_phys(x_phys)
 
     def _p3_basis_phys(self, x_phys):
         return scaled_monomials(x_phys, self.xE, self.hE, P3_EXPONENTS)
@@ -340,7 +347,7 @@ class QuarticHermitePhysicalVEMSpace(SpaceBase):
             w = float(p.weight * abs(self.detJ)) / self.area
             x_phys = self._physical_point(xhat)
             P[12:18, :] += w * numpy.outer(
-                self._m2_basis_phys(x_phys),
+                self._moment_basis_phys(x_phys),
                 self.evaluateLocal(xhat),
             )
         return P
@@ -388,7 +395,7 @@ class QuarticHermitePhysicalVEMSpace(SpaceBase):
                 xhat = p.position
                 w = float(p.weight * geo.integrationElement(xhat))
                 x_phys = geo.toGlobal(xhat)
-                mom += w * float(gf(e, xhat)) * self._m2_basis_phys(x_phys)
+                mom += w * float(gf(e, xhat)) * self._moment_basis_phys(x_phys)
 
             local[12:18] = mom / self.area
             dofs[idx] = local
