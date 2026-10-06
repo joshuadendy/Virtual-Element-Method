@@ -45,16 +45,7 @@ class LinearLagrangePhysicalVEMSpace(SpaceBase):
         self.bind(numpy.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], dtype=float))
 
     def bind(self, element_or_vertices):
-        data = bind_affine_triangle(element_or_vertices)
-        self.vertices[0] = data["x0"]
-        self.vertices[1] = data["e1"]
-        self.vertices[2] = data["e2"]
-        self.x0 = data["x0"].copy()
-        self.J = data["J"].copy()
-        self.Jinv = data["Jinv"].copy()
-        self.area = float(data["area"])
-        self.xE = data["xE"].copy()
-        self.hE = float(data["hE"])
+        self._bind_geometry(element_or_vertices)
 
         A = numpy.zeros((self.localDofs, 3), dtype=float)
         for i, xv in enumerate((self.x0, self.x0 + self.vertices[1], self.x0 + self.vertices[2])):
@@ -62,6 +53,19 @@ class LinearLagrangePhysicalVEMSpace(SpaceBase):
 
         self._Pi0Coeffs = numpy.linalg.solve(A, numpy.eye(self.localDofs, dtype=float))
         self._Pi1Coeffs = self._build_physical_gradient_projector()
+
+    def _bind_geometry(self, element_or_vertices):
+        data = bind_affine_triangle(element_or_vertices)
+        self.vertices[0] = data["x0"]
+        self.vertices[1] = data["e1"]
+        self.vertices[2] = data["e2"]
+        self.x0 = data["x0"].copy()
+        self.J = data["J"].copy()
+        self.Jinv = data["Jinv"].copy()
+        self.detJ = float(data["detJ"])
+        self.area = float(data["area"])
+        self.xE = data["xE"].copy()
+        self.hE = float(data["hE"])
 
     def _poly_basis_value(self, x_phys):
         return scaled_monomials(x_phys, self.xE, self.hE, P1_EXPONENTS)

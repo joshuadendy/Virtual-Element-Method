@@ -86,6 +86,17 @@ class QuadraticLagrangePhysicalVEMSpace(SpaceBase):
             return numpy.linalg.lstsq(A, B, rcond=None)[0]
 
     def bind(self, element_or_vertices):
+        self._bind_geometry(element_or_vertices)
+
+        A, C = self._build_A_and_C()
+        self._Pi0Coeffs = solve_cls_kkt_all_rhs(
+            A=A,
+            C=C,
+            G=self._constraint_rhs_selector,
+        )
+        self._Pi1Coeffs = self._build_gradient_projector()
+
+    def _bind_geometry(self, element_or_vertices):
         data = bind_affine_triangle(element_or_vertices)
         self.vertices[0] = data["x0"]
         self.vertices[1] = data["e1"]
@@ -97,14 +108,6 @@ class QuadraticLagrangePhysicalVEMSpace(SpaceBase):
         self.area = float(data["area"])
         self.xE = data["xE"].copy()
         self.hE = float(data["hE"])
-
-        A, C = self._build_A_and_C()
-        self._Pi0Coeffs = solve_cls_kkt_all_rhs(
-            A=A,
-            C=C,
-            G=self._constraint_rhs_selector,
-        )
-        self._Pi1Coeffs = self._build_gradient_projector()
 
     def _physical_point(self, xhat):
         return self.x0 + self.J.dot(numpy.asarray(xhat, dtype=float))
