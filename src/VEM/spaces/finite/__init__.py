@@ -1,3 +1,2 @@
 """Finite element spaces."""
-from .hermite import *
-from .lagrange import *
+from .fem_space import FEMSpace

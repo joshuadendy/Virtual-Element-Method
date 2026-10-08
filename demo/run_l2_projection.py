@@ -8,11 +8,8 @@ from dune.grid import cartesianDomain, gridFunction
 from VEM.assembly import assemble_l2_projection
 from VEM import compare_projectors, error, mesh_size, plot_eoc_curves
 from VEM import (
+    FEMSpace,
     VEMSpace,
-    LinearLagrangeSpace,
-    QuadraticLagrangeSpace,
-    CubicHermiteSpace,
-    QuarticHermiteSpace,
 )
 
 # Use a triangular grid for demo
@@ -81,8 +78,7 @@ def run_projection_demo(
         for level in range(refinements):
             level_start = time.perf_counter()
             space = make_space(view)
-            order = getattr(space, "order", None) or {3: 1, 6: 2, 10: 3, 15: 4}[space.localDofs]
-            quad_order = 2 * order + 2
+            quad_order = 2 * space.order + 2
             h = mesh_size(view)
 
             print(
@@ -159,15 +155,17 @@ def run_projection_demo(
 
 
 if __name__ == "__main__":
+    SPACES = (("lagrange", 1), ("lagrange", 2), ("hermite", 3), ("hermite", 4))
     run_projection_demo(
         spaces={
-            **{cls.__name__: cls for cls in (
-                LinearLagrangeSpace, QuadraticLagrangeSpace, CubicHermiteSpace, QuarticHermiteSpace,
-            )},
+            **{
+                f"{element} k={k} FEM": partial(FEMSpace, order=k, element=element)
+                for element, k in SPACES
+            },
             **{
                 f"{element} k={k} {'mapped' if mapped else 'physical'} VEM":
                     partial(VEMSpace, order=k, element=element, mapped=mapped)
-                for element, k in (("lagrange", 1), ("lagrange", 2), ("hermite", 3), ("hermite", 4))
+                for element, k in SPACES
                 for mapped in (False, True)
             },
         },

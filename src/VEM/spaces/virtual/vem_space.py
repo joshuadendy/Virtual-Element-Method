@@ -4,11 +4,8 @@ from dune.geometry import quadratureRule
 from ..base import SpaceBase
 from ..common.cls_projector import solve_cls_kkt_all_rhs
 from ..common.scaled_monomials import scaled_monomial_gradients, scaled_monomials, total_degree_exponents
-from ..common.triangle_geometry import REFERENCE_TRIANGLE_VERTICES, bind_affine_triangle
+from ..common.triangle_geometry import EDGES, REFERENCE_TRIANGLE_VERTICES, bind_affine_triangle
 from ..common.vertex_scaling import build_vertex_effective_h
-
-# DUNE reference-triangle edge numbering, which fixes the local edge dof order.
-EDGES = ((0, 1), (0, 2), (1, 2))
 
 
 class VEMSpace(SpaceBase):

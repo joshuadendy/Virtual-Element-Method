@@ -13,34 +13,6 @@ def total_degree_exponents(order):
     return exponents
 
 
-P0_EXPONENTS = total_degree_exponents(0)
-P1_EXPONENTS = total_degree_exponents(1)
-P2_EXPONENTS = total_degree_exponents(2)
-P3_EXPONENTS = total_degree_exponents(3)
-P4_EXPONENTS = total_degree_exponents(4)
-
-
-def monomials(x, exponents):
-    xx = float(x[0])
-    yy = float(x[1])
-    return numpy.array([(xx ** a) * (yy ** b) for a, b in exponents], dtype=float)
-
-
-def monomial_gradients(x, exponents):
-    xx = float(x[0])
-    yy = float(x[1])
-    dx = numpy.zeros(len(exponents), dtype=float)
-    dy = numpy.zeros(len(exponents), dtype=float)
-
-    for i, (a, b) in enumerate(exponents):
-        if a > 0:
-            dx[i] = a * (xx ** (a - 1)) * (yy ** b)
-        if b > 0:
-            dy[i] = b * (xx ** a) * (yy ** (b - 1))
-
-    return dx, dy
-
-
 def scaled_monomials(x, x_center, h, exponents):
     """Scaled monomials ((x - x_center) / h)^alpha for points x of shape (..., 2)."""
     y = (numpy.asarray(x, dtype=float) - x_center) / h

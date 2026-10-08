@@ -7,11 +7,8 @@ from dune.grid import cartesianDomain, gridFunction
 from dune.alugrid import aluConformGrid
 
 from VEM import (
+    FEMSpace,
     VEMSpace,
-    CubicHermiteSpace,
-    QuarticHermiteSpace,
-    LinearLagrangeSpace,
-    QuadraticLagrangeSpace,
     apply_dirichlet,
     assemble_poisson,
     compare_gradient_projectors,
@@ -110,7 +107,7 @@ def run_poisson_demo(
         """
         ids = set()
 
-        if getattr(space, "element", None) == "hermite" or space.localDofs in (10, 15):
+        if space.element == "hermite":
             edge_slots = range(9, space.localDofs)
 
             for e in space.view.elements:
@@ -178,8 +175,7 @@ def run_poisson_demo(
             space = make_space(view)
             h = mesh_size(view)
 
-            order = getattr(space, "order", None) or {3: 1, 6: 2, 10: 3, 15: 4}[space.localDofs]
-            quad_order = 2 * order + 2
+            quad_order = 2 * space.order + 2
 
             print(
                 "level ", level, ":",
@@ -275,15 +271,17 @@ def run_poisson_demo(
 
 
 if __name__ == "__main__":
+    SPACES = (("lagrange", 1), ("lagrange", 2), ("hermite", 3), ("hermite", 4))
     run_poisson_demo(
         spaces={
-            **{cls.__name__: cls for cls in (
-                LinearLagrangeSpace, QuadraticLagrangeSpace, CubicHermiteSpace, QuarticHermiteSpace,
-            )},
+            **{
+                f"{element} k={k} FEM": partial(FEMSpace, order=k, element=element)
+                for element, k in SPACES
+            },
             **{
                 f"{element} k={k} {'mapped' if mapped else 'physical'} VEM":
                     partial(VEMSpace, order=k, element=element, mapped=mapped)
-                for element, k in (("lagrange", 1), ("lagrange", 2), ("hermite", 3), ("hermite", 4))
+                for element, k in SPACES
                 for mapped in (False, True)
             },
         },

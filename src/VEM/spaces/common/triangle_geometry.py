@@ -8,6 +8,9 @@ REFERENCE_TRIANGLE_VERTICES = numpy.array(
     dtype=float,
 )
 
+# DUNE reference-triangle edge numbering, which fixes the local edge dof order.
+EDGES = ((0, 1), (0, 2), (1, 2))
+
 
 def coerce_triangle_vertices(element_or_vertices):
     """

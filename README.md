@@ -125,10 +125,7 @@ This script:
 
 The package currently exposes the following space families through `VEM`:
 
-- `LinearLagrangeSpace`
-- `QuadraticLagrangeSpace`
-- `CubicHermiteSpace`
-- `QuarticHermiteSpace`
+- `FEMSpace(view, order, element="lagrange")`: classical `C0` Lagrange (`k >= 1`) or Hermite (`element="hermite"`, `k >= 3`) finite elements of any order, with the nodal basis built on the reference triangle and mapped to each element.
 - `VEMSpace(view, order, element="lagrange", mapped=False)`: the Lagrange-type (`k >= 1`) or Hermite-type (`element="hermite"`, `k >= 3`) virtual element spaces of `VEM_Maps.pdf` Section 5 at any order, assembled on each physical element or, with `mapped=True`, mapped from the reference triangle.
 
 ## Notes
