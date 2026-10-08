@@ -2,7 +2,7 @@ import numpy
 from dune.geometry import quadratureRule
 
 from .base import SpaceBase
-from .common.cls_projector import solve_cls_kkt_all_rhs
+from .common.cls_projector import solve_cls
 from .common.scaled_monomials import scaled_monomial_gradients, scaled_monomials, total_degree_exponents
 from .common.triangle_geometry import EDGES, REFERENCE_TRIANGLE_VERTICES, bind_affine_triangle
 from .common.vertex_scaling import build_vertex_effective_h
@@ -16,6 +16,11 @@ class VEMSpace(SpaceBase):
     element="lagrange" gives the Lagrange-type space of Section 5.1 (k >= 1) and
     element="hermite" the Hermite-type space of Section 5.2 (k >= 3). Both use
     B_0 = M_k(E), C_0 = interior moments and B_1 = [M_{k-1}(E)]^2.
+
+    Orders are capped at MAX_ORDER: the dof matrix of the scaled monomials against
+    the monomial edge and interior moments grows in condition number like ~10^(2k),
+    and above k = 6 the value projection loses exactness on P_k (|Pi_0 A - I| and
+    |P^2 - P| exceed 1e-6 at k = 7 and reach 1e-3 at k = 8).
 
     By default the projections are assembled on each physical element. With
     mapped=True they are assembled once on the reference triangle and evaluated
@@ -35,12 +40,16 @@ class VEMSpace(SpaceBase):
     evaluateLocal returns Pi_0 of the virtual basis and evaluateLocalGradient Pi_1.
     """
 
+    MAX_ORDER = 6
+
     def __init__(self, view, order, element="lagrange", mapped=False):
         if element not in ("lagrange", "hermite"):
             raise ValueError(f"Unknown element type {element!r}.")
         hermite = element == "hermite"
         if order < (3 if hermite else 1):
             raise ValueError(f"order {order} is too low for a {element} VEM space.")
+        if order > self.MAX_ORDER:
+            raise ValueError(f"order {order} exceeds VEMSpace.MAX_ORDER = {self.MAX_ORDER}.")
         self.view = view
         self.dim = view.dimension
         self.order = order
@@ -140,7 +149,7 @@ class VEMSpace(SpaceBase):
             lambda x: self._mono_grad(x, self._value_exps),
         )
         interior = slice(self.localDofs - self._ni, self.localDofs)
-        self._Pi0 = solve_cls_kkt_all_rhs(self._A, self._A[interior], numpy.eye(self.localDofs)[interior])
+        self._Pi0 = solve_cls(self._A, self._A[interior], numpy.eye(self.localDofs)[interior])
         self._Pi1 = self._build_gradient_projector()
 
     def _bind_mapping(self):

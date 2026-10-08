@@ -7,7 +7,7 @@ A small Python implementation of finite element and virtual element construction
 This repository provides:
 
 - **Classical finite element spaces** on triangles: `C0` Lagrange (`k >= 1`) and Hermite (`k >= 3`) elements of any order.
-- **Virtual element spaces** on triangles: the Lagrange-type (`k >= 1`) and Hermite-type (`k >= 3`) spaces of [VEM_Maps.pdf](VEM_Maps.pdf) Section 5 at any order, with projections either assembled on each **physical** element or **mapped** from the reference triangle.
+- **Virtual element spaces** on triangles: the Lagrange-type (`k >= 1`) and Hermite-type (`k >= 3`) spaces of [VEM_Maps.pdf](VEM_Maps.pdf) Section 5 up to order 6, with projections either assembled on each **physical** element or **mapped** from the reference triangle.
 - **Assembly routines** for:
   - an **L2 projection** problem
   - a **Poisson** problem with Dirichlet boundary conditions
@@ -130,7 +130,7 @@ Both space classes are exposed through `VEM` and share the same interface (`bind
 - `FEMSpace(view, order, element="lagrange")`
 - `VEMSpace(view, order, element="lagrange", mapped=False)`
 
-`element` is `"lagrange"` (`order >= 1`) or `"hermite"` (`order >= 3`). For `VEMSpace`, `evaluateLocal` and `evaluateLocalGradient` return the value projection and gradient projection of the virtual basis, and `mapped=True` evaluates the reference-mapped projections of Section 4.2 instead of assembling them on each element.
+`element` is `"lagrange"` (`order >= 1`) or `"hermite"` (`order >= 3`). `VEMSpace` accepts orders up to `VEMSpace.MAX_ORDER = 6`: beyond that the monomial-based dofs make the value projection lose exactness on `P_k` in double precision. For `VEMSpace`, `evaluateLocal` and `evaluateLocalGradient` return the value projection and gradient projection of the virtual basis, and `mapped=True` evaluates the reference-mapped projections of Section 4.2 instead of assembling them on each element.
 
 ```python
 from VEM import FEMSpace, VEMSpace

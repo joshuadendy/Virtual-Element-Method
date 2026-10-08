@@ -11,7 +11,12 @@ class FEMSpace(SpaceBase):
 
     element="lagrange" (k >= 1): values at the order-k lattice points.
     element="hermite" (k >= 3): u and grad u at the vertices, k-3 equispaced
-    values per edge and values at the (k-1)(k-2)/2 interior lattice points.
+    values per edge and (k-1)(k-2)/2 interior values.
+
+    The interior nodes are the P_{k-3} principal lattice of an inner triangle,
+    at barycentric coordinates (1 + s alpha) / (3 + s(k-3)) with |alpha| = k-3:
+    s = 1 gives the interior order-k lattice (Lagrange), and s = 2 gives the
+    barycentre at k = 3 and (1/5, 1/5), (3/5, 1/5), (1/5, 3/5) at k = 4 (Hermite).
 
     The nodal basis is built once on the reference triangle and mapped by
     Phi = M F^*(hat Phi) with M = V^T (Section 3.3). V is the identity apart from
@@ -41,9 +46,10 @@ class FEMSpace(SpaceBase):
 
         ref = REFERENCE_TRIANGLE_VERTICES
         self._edge_r = numpy.arange(1, self._ne + 1) / (self._ne + 1)
+        s, n = (2 if self._hermite else 1), order - 3
         self._interior = numpy.array(
-            [[i, j] for j in range(1, order) for i in range(1, order - j)], dtype=float
-        ).reshape(-1, 2) / order
+            [[1 + s * a, 1 + s * b] for b in range(n + 1) for a in range(n + 1 - b)], dtype=float
+        ).reshape(-1, 2) / (3 + s * n)
         self.points = numpy.vstack([
             numpy.repeat(ref, self._nv, axis=0),
             *(ref[a] + self._edge_r[:, None] * (ref[b] - ref[a]) for a, b in EDGES),

@@ -14,5 +14,5 @@ from .scaled_monomials import (
     scaled_monomial_gradients,
     total_degree_exponents,
 )
-from .cls_projector import solve_cls_kkt_all_rhs
+from .cls_projector import solve_cls
 from .vertex_scaling import build_vertex_effective_h
