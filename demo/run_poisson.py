@@ -15,6 +15,7 @@ from VEM import (
     mesh_size,
     plot_eoc_curves,
     projected_error,
+    unit_square_boundary_dofs,
 )
 
 
@@ -87,78 +88,6 @@ def run_poisson_demo(
 
         return err, abs_err
 
-    def boundary_dofs_and_values(space, exact_dofs, tol=1e-12):
-        """
-        Return Dirichlet dof ids and values.
-
-        For pure value spaces:
-          all boundary-associated local dofs are clamped.
-
-        For Hermite spaces on the unit square:
-          - clamp boundary vertex value dofs
-          - clamp tangential derivative dofs on boundary edges
-            * horizontal edges -> dx dof
-            * vertical edges   -> dy dof
-          - clamp boundary edge-value / edge-average dofs when present
-
-        This is correct for the current square-domain demo because the boundary
-        tangents are coordinate-aligned. On a general polygon, tangential
-        constraints would be linear combinations of dx/dy dofs instead.
-        """
-        ids = set()
-
-        if space.element == "hermite":
-            edge_slots = range(9, space.localDofs)
-
-            for e in space.view.elements:
-                idx = numpy.asarray(space.mapper(e), dtype=int)
-
-                for base in (0, 3, 6):
-                    xhat = numpy.asarray(space.points[base], dtype=float)
-                    x, y = e.geometry.toGlobal(xhat)
-
-                    on_left = abs(x) < tol
-                    on_right = abs(x - 1.0) < tol
-                    on_bottom = abs(y) < tol
-                    on_top = abs(y - 1.0) < tol
-
-                    if on_left or on_right or on_bottom or on_top:
-                        ids.add(int(idx[base]))
-
-                    if on_bottom or on_top:
-                        ids.add(int(idx[base + 1]))
-
-                    if on_left or on_right:
-                        ids.add(int(idx[base + 2]))
-
-                for slot in edge_slots:
-                    xhat = numpy.asarray(space.points[slot], dtype=float)
-                    x, y = e.geometry.toGlobal(xhat)
-                    if (
-                        abs(x) < tol
-                        or abs(x - 1.0) < tol
-                        or abs(y) < tol
-                        or abs(y - 1.0) < tol
-                    ):
-                        ids.add(int(idx[slot]))
-
-        else:
-            for e in space.view.elements:
-                idx = numpy.asarray(space.mapper(e), dtype=int)
-                for ldof, xhat in enumerate(space.points):
-                    x, y = e.geometry.toGlobal(numpy.asarray(xhat, dtype=float))
-                    if (
-                        abs(x) < tol
-                        or abs(x - 1.0) < tol
-                        or abs(y) < tol
-                        or abs(y - 1.0) < tol
-                    ):
-                        ids.add(int(idx[ldof]))
-
-        ids = numpy.array(sorted(ids), dtype=int)
-        vals = numpy.asarray(exact_dofs[ids], dtype=float)
-        return ids, vals
-
     histories = {}
 
     for name, make_space in spaces.items():
@@ -193,7 +122,8 @@ def run_poisson_demo(
             )
 
             exact_dofs = space.interpolate(u)
-            bdy_ids, bdy_vals = boundary_dofs_and_values(space, exact_dofs)
+            bdy_ids = unit_square_boundary_dofs(space)
+            bdy_vals = exact_dofs[bdy_ids]
 
             rhs_bc, matrix_bc = apply_dirichlet(matrix, rhs, bdy_ids, bdy_vals)
             dofs = scipy.sparse.linalg.spsolve(matrix_bc, rhs_bc)
