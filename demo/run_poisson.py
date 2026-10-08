@@ -110,12 +110,8 @@ def run_poisson_demo(
         """
         ids = set()
 
-        if space.localDofs in (10, 12, 15, 18):
-            edge_slots = []
-            if space.localDofs == 15:
-                edge_slots = [9, 10, 11]
-            elif space.localDofs == 18:
-                edge_slots = [9, 10, 11]
+        if getattr(space, "element", None) == "hermite" or space.localDofs in (10, 15):
+            edge_slots = range(9, space.localDofs)
 
             for e in space.view.elements:
                 idx = numpy.asarray(space.mapper(e), dtype=int)
@@ -182,14 +178,8 @@ def run_poisson_demo(
             space = make_space(view)
             h = mesh_size(view)
 
-            if space.localDofs >= 15:
-                quad_order = 10
-            elif space.localDofs >= 10:
-                quad_order = 8
-            elif space.localDofs > 3:
-                quad_order = 6
-            else:
-                quad_order = 4
+            order = getattr(space, "order", None) or {3: 1, 6: 2, 10: 3, 15: 4}[space.localDofs]
+            quad_order = 2 * order + 2
 
             print(
                 "level ", level, ":",

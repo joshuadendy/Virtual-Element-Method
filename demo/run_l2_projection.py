@@ -81,14 +81,8 @@ def run_projection_demo(
         for level in range(refinements):
             level_start = time.perf_counter()
             space = make_space(view)
-            if space.localDofs >= 15:
-                quad_order = 10
-            elif space.localDofs >= 10:
-                quad_order = 8
-            elif space.localDofs > 3:
-                quad_order = 6
-            else:
-                quad_order = 4
+            order = getattr(space, "order", None) or {3: 1, 6: 2, 10: 3, 15: 4}[space.localDofs]
+            quad_order = 2 * order + 2
             h = mesh_size(view)
 
             print(
