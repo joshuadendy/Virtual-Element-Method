@@ -129,16 +129,7 @@ The package currently exposes the following space families through `VEM`:
 - `QuadraticLagrangeSpace`
 - `CubicHermiteSpace`
 - `QuarticHermiteSpace`
-- `LinearLagrangeMappedVEMSpace`
-- `LinearLagrangePhysicalVEMSpace`
-- `QuadraticLagrangeMappedVEMSpace`
-- `QuadraticLagrangePhysicalVEMSpace`
-- `CubicHermiteMappedVEMSpace`
-- `CubicHermitePhysicalVEMSpace`
-- `QuarticHermiteMappedVEMSpace`
-- `QuarticHermitePhysicalVEMSpace`
-
-The fixed-order VEM classes are thin wrappers around `PhysicalVEMSpace(view, order, hermite=False)` and `MappedVEMSpace(view, order, hermite=False)`, which build the Lagrange-type (`k >= 1`) or Hermite-type (`k >= 3`) spaces of `VEM_Maps.pdf` Section 5 at any order.
+- `VEMSpace(view, order, element="lagrange", mapped=False)`: the Lagrange-type (`k >= 1`) or Hermite-type (`element="hermite"`, `k >= 3`) virtual element spaces of `VEM_Maps.pdf` Section 5 at any order, assembled on each physical element or, with `mapped=True`, mapped from the reference triangle.
 
 ## Notes
 

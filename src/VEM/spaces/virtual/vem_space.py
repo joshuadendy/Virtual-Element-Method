@@ -11,14 +11,23 @@ from ..common.vertex_scaling import build_vertex_effective_h
 EDGES = ((0, 1), (0, 2), (1, 2))
 
 
-class PhysicalVEMSpace(SpaceBase):
+class VEMSpace(SpaceBase):
     """
-    Order-k H1-conforming VEM on triangles, with the CLS value projection (4.9)
-    and gradient projection (4.43) assembled on each physical element.
+    Order-k H1-conforming VEM on triangles with the CLS value projection (4.9)
+    and gradient projection (4.43).
 
-    hermite=False gives the Lagrange-type space of Section 5.1 (k >= 1) and
-    hermite=True the Hermite-type space of Section 5.2 (k >= 3). Both use
+    element="lagrange" gives the Lagrange-type space of Section 5.1 (k >= 1) and
+    element="hermite" the Hermite-type space of Section 5.2 (k >= 3). Both use
     B_0 = M_k(E), C_0 = interior moments and B_1 = [M_{k-1}(E)]^2.
+
+    By default the projections are assembled on each physical element. With
+    mapped=True they are assembled once on the reference triangle and evaluated
+    as the surrogates (4.73) and (4.75):
+      Pi_0 = M F^*(Pi_0[hat Phi]),  Pi_1 = J^{-T} M F^*(Pi_1[hat Phi]),
+    where M = V^T and V F_*(Lambda) = hat Lambda. V is the identity apart from the
+    Hermite gradient blocks (h_hat_v / h_v) J^T of (5.20) and a (-1)^j on the
+    moments of edges parametrised against the reference orientation. Interior
+    moments then use the transported reference basis, C_0 = F_{-*}(hat C_0).
 
     Local dof ordering (matching the DUNE mapper):
       vertices : u, or [u, h_v u_x, h_v u_y] for Hermite
@@ -29,13 +38,18 @@ class PhysicalVEMSpace(SpaceBase):
     evaluateLocal returns Pi_0 of the virtual basis and evaluateLocalGradient Pi_1.
     """
 
-    def __init__(self, view, order, hermite=False):
+    def __init__(self, view, order, element="lagrange", mapped=False):
+        if element not in ("lagrange", "hermite"):
+            raise ValueError(f"Unknown element type {element!r}.")
+        hermite = element == "hermite"
         if order < (3 if hermite else 1):
-            raise ValueError(f"order {order} is too low for this VEM family.")
+            raise ValueError(f"order {order} is too low for a {element} VEM space.")
         self.view = view
         self.dim = view.dimension
         self.order = order
-        self.hermite = hermite
+        self.element = element
+        self._hermite = hermite
+        self._ref = VEMSpace(view, order, element) if mapped else None
         self._nv = 3 if hermite else 1
         self._ne = order - 3 if hermite else order - 1
         self._ni = order * (order - 1) // 2
@@ -83,11 +97,11 @@ class PhysicalVEMSpace(SpaceBase):
         if hasattr(element_or_vertices, "geometry"):
             idx = self.mapper(element_or_vertices)
             gv = [int(idx[self._nv * i]) for i in range(3)]
-            if self.hermite:
+            if self._hermite:
                 self._hV = self._vertex_h[gv]
         else:
             gv = [0, 1, 2]
-            if self.hermite:
+            if self._hermite:
                 lengths = {ab: numpy.linalg.norm(verts[ab[1]] - verts[ab[0]]) for ab in EDGES}
                 self._hV = numpy.array([numpy.mean([l for ab, l in lengths.items() if i in ab]) for i in range(3)])
         self._edges = [(a, b) if gv[a] < gv[b] else (b, a) for a, b in EDGES]
@@ -100,17 +114,19 @@ class PhysicalVEMSpace(SpaceBase):
         return scaled_monomial_gradients(self.x0 + xhat @ self.J.T, self.xE, self.hE, exps)
 
     def _moment_basis(self, xhat):
+        if self._ref is not None:
+            return self._ref._moment_basis(xhat)
         return self._mono(xhat, self._moment_exps)
 
     def _apply_dofs(self, f, df):
         """Local dofs of f(xhat) -> (n, m), with df(xhat) -> (n, m, 2) its physical gradient."""
         ref = REFERENCE_TRIANGLE_VERTICES
         fv = f(ref)
-        dfv = df(ref) if self.hermite else None
+        dfv = df(ref) if self._hermite else None
         rows = []
         for i in range(3):
             rows.append(fv[i])
-            if self.hermite:
+            if self._hermite:
                 rows.extend(self._hV[i] * dfv[i].T)
         for a, b in self._edges:
             rows.extend(self._edge_moments @ f(ref[a] + self._edge_r[:, None] * (ref[b] - ref[a])))
@@ -119,6 +135,9 @@ class PhysicalVEMSpace(SpaceBase):
 
     def bind(self, element_or_vertices):
         self._bind_geometry(element_or_vertices)
+        if self._ref is not None:
+            self._bind_mapping()
+            return
         self._A = self._apply_dofs(
             lambda x: self._mono(x, self._value_exps),
             lambda x: self._mono_grad(x, self._value_exps),
@@ -126,6 +145,17 @@ class PhysicalVEMSpace(SpaceBase):
         interior = slice(self.localDofs - self._ni, self.localDofs)
         self._Pi0 = solve_cls_kkt_all_rhs(self._A, self._A[interior], numpy.eye(self.localDofs)[interior])
         self._Pi1 = self._build_gradient_projector()
+
+    def _bind_mapping(self):
+        self.M = numpy.eye(self.localDofs)
+        if self._hermite:
+            for i in range(3):
+                self.M[3 * i + 1:3 * i + 3, 3 * i + 1:3 * i + 3] = (self._ref._hV[i] / self._hV[i]) * self.J
+        signs = (-1.0) ** numpy.arange(self._ne)
+        for i, (edge, ref_edge) in enumerate(zip(self._edges, EDGES)):
+            if edge != ref_edge:
+                start = 3 * self._nv + i * self._ne
+                self.M[start:start + self._ne, start:start + self._ne] = numpy.diag(signs)
 
     def _build_gradient_projector(self):
         """Solve (4.43) for Pi_1, stored as (2, dim M_{k-1}, localDofs)."""
@@ -145,7 +175,7 @@ class PhysicalVEMSpace(SpaceBase):
 
             S = numpy.zeros((k + 1, self.localDofs))
             S[0, nv * s] = S[1, nv * t] = 1.0
-            if self.hermite:
+            if self._hermite:
                 S[2, nv * s + 1:nv * s + 3] = ev / self._hV[s]
                 S[3, nv * t + 1:nv * t + 3] = ev / self._hV[t]
             S[k + 1 - ne:, 3 * nv + i * ne:3 * nv + (i + 1) * ne] = numpy.eye(ne)
@@ -157,16 +187,22 @@ class PhysicalVEMSpace(SpaceBase):
         return numpy.linalg.solve(mass, rhs)
 
     def evaluateLocal(self, x):
+        if self._ref is not None:
+            return self.M @ self._ref.evaluateLocal(x)
         return self._mono(numpy.asarray(x, dtype=float)[None], self._value_exps)[0] @ self._Pi0
 
     def evaluateLocalGradient(self, x):
+        if self._ref is not None:
+            return self.M @ self._ref.evaluateLocalGradient(x) @ self.Jinv
         return (self._mono(numpy.asarray(x, dtype=float)[None], self._grad_exps)[0] @ self._Pi1).T
 
     def localProjectorDofs(self):
+        if self._ref is not None:
+            return numpy.linalg.solve(self.M.T, self._ref.localProjectorDofs() @ self.M.T)
         return self._A @ self._Pi0
 
     def interpolate(self, gf):
-        if self.hermite and not hasattr(gf, "jacobian"):
+        if self._hermite and not hasattr(gf, "jacobian"):
             raise NotImplementedError(
                 "Hermite-type VEM interpolation needs gf.jacobian(e, x) returning the physical gradient."
             )

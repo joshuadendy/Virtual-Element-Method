@@ -1,3 +1,4 @@
+from functools import partial
 import numpy
 import matplotlib.pyplot as plt
 import scipy.sparse.linalg
@@ -6,17 +7,10 @@ from dune.grid import cartesianDomain, gridFunction
 from dune.alugrid import aluConformGrid
 
 from VEM import (
-    CubicHermiteMappedVEMSpace,
-    CubicHermitePhysicalVEMSpace,
+    VEMSpace,
     CubicHermiteSpace,
-    QuarticHermiteMappedVEMSpace,
-    QuarticHermitePhysicalVEMSpace,
     QuarticHermiteSpace,
-    LinearLagrangeMappedVEMSpace,
-    LinearLagrangePhysicalVEMSpace,
     LinearLagrangeSpace,
-    QuadraticLagrangeMappedVEMSpace,
-    QuadraticLagrangePhysicalVEMSpace,
     QuadraticLagrangeSpace,
     apply_dirichlet,
     assemble_poisson,
@@ -28,7 +22,7 @@ from VEM import (
 
 
 def run_poisson_demo(
-    spaces=(LinearLagrangeMappedVEMSpace,),
+    spaces={"lagrange k=1 mapped VEM": partial(VEMSpace, order=1, mapped=True)},
     refinements=3,
     plot=False,
     plot_true_solution=False,
@@ -174,8 +168,8 @@ def run_poisson_demo(
 
     histories = {}
 
-    for space_type in spaces:
-        print("Testing space:", space_type.__name__)
+    for name, make_space in spaces.items():
+        print("Testing space:", name)
         space_start = time.perf_counter()
         old_err = None
         history = []
@@ -185,7 +179,7 @@ def run_poisson_demo(
             _, view = build_demo_view(level)
             u = make_exact_solution(view)
             f = make_rhs(view)
-            space = space_type(view)
+            space = make_space(view)
             h = mesh_size(view)
 
             if space.localDofs >= 15:
@@ -264,8 +258,8 @@ def run_poisson_demo(
             old_err = err
 
         total_elapsed = time.perf_counter() - space_start
-        histories[space_type.__name__] = history
-        print(f"Total runtime for {space_type.__name__}: {total_elapsed:.3f} s")
+        histories[name] = history
+        print(f"Total runtime for {name}: {total_elapsed:.3f} s")
         print()
 
     if plot_eoc:
@@ -278,8 +272,8 @@ def run_poisson_demo(
 
     if compare_mapped:
         _, compare_view = build_demo_view(level=0)
-        space_physical = QuarticHermitePhysicalVEMSpace(compare_view)
-        space_mapped = QuarticHermiteMappedVEMSpace(compare_view)
+        space_physical = VEMSpace(compare_view, 4, element="hermite")
+        space_mapped = VEMSpace(compare_view, 4, element="hermite", mapped=True)
         return compare_gradient_projectors(
             space_physical,
             space_mapped,
@@ -292,20 +286,17 @@ def run_poisson_demo(
 
 if __name__ == "__main__":
     run_poisson_demo(
-        spaces=(
-            LinearLagrangeSpace,
-            QuadraticLagrangeSpace,
-            CubicHermiteSpace,
-            QuarticHermiteSpace,
-            LinearLagrangePhysicalVEMSpace,
-            LinearLagrangeMappedVEMSpace,
-            QuadraticLagrangePhysicalVEMSpace,
-            QuadraticLagrangeMappedVEMSpace,
-            CubicHermitePhysicalVEMSpace,
-            CubicHermiteMappedVEMSpace,
-            QuarticHermitePhysicalVEMSpace,
-            QuarticHermiteMappedVEMSpace,
-        ),
+        spaces={
+            **{cls.__name__: cls for cls in (
+                LinearLagrangeSpace, QuadraticLagrangeSpace, CubicHermiteSpace, QuarticHermiteSpace,
+            )},
+            **{
+                f"{element} k={k} {'mapped' if mapped else 'physical'} VEM":
+                    partial(VEMSpace, order=k, element=element, mapped=mapped)
+                for element, k in (("lagrange", 1), ("lagrange", 2), ("hermite", 3), ("hermite", 4))
+                for mapped in (False, True)
+            },
+        },
         refinements=3,
         plot=False,
         plot_true_solution=False,
