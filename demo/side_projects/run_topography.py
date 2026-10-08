@@ -11,7 +11,7 @@ from matplotlib.tri import Triangulation
 from PIL import Image
 from dune.alugrid import aluConformGrid
 
-from VEM import CubicHermiteMappedVEMSpace, assemble_poisson
+from VEM import VEMSpace, assemble_poisson
 from VEM.assembly import assemble_l2_projection
 
 MAP = LinearSegmentedColormap.from_list("map", [
@@ -240,7 +240,7 @@ def run_topography(kappa=11.0, sea_level=0.3, h_land=0.02, h_outer=0.035, filena
     print("elements:", len(T))
 
     view = aluConformGrid({"vertices": V, "simplices": T})
-    space = CubicHermiteMappedVEMSpace(view)
+    space = VEMSpace(view, 3, element="hermite", mapped=True)
 
     # Uplift f = 1_land * (base + peaks); screened Poisson spreads it into
     # slopes that decay into the sea over a length of roughly 1/κ.

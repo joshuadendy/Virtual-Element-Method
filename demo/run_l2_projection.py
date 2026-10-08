@@ -1,3 +1,4 @@
+from functools import partial
 import numpy
 import matplotlib.pyplot as plt
 import scipy.sparse
@@ -7,18 +8,8 @@ from dune.grid import cartesianDomain, gridFunction
 from VEM.assembly import assemble_l2_projection
 from VEM import compare_projectors, error, mesh_size, plot_eoc_curves
 from VEM import (
-    LinearLagrangeSpace,
-    QuadraticLagrangeSpace,
-    CubicHermiteSpace,
-    QuarticHermiteSpace,
-    CubicHermiteMappedVEMSpace,
-    CubicHermitePhysicalVEMSpace,
-    QuarticHermiteMappedVEMSpace,
-    QuarticHermitePhysicalVEMSpace,
-    LinearLagrangeMappedVEMSpace,
-    LinearLagrangePhysicalVEMSpace,
-    QuadraticLagrangeMappedVEMSpace,
-    QuadraticLagrangePhysicalVEMSpace,
+    FEMSpace,
+    VEMSpace,
 )
 
 # Use a triangular grid for demo
@@ -26,7 +17,7 @@ from dune.alugrid import aluConformGrid
 
 
 def run_projection_demo(
-    spaces=(QuarticHermiteMappedVEMSpace,),
+    spaces={"hermite k=4 mapped VEM": partial(VEMSpace, order=4, element="hermite", mapped=True)},
     refinements=3,
     plot=True,
     plot_true_solution=False,
@@ -74,8 +65,8 @@ def run_projection_demo(
 
     histories = {}
 
-    for space_type in spaces:
-        print("Testing space:", space_type.__name__)
+    for name, make_space in spaces.items():
+        print("Testing space:", name)
         space_start = time.perf_counter()
 
         _, view = build_demo_view()
@@ -86,15 +77,8 @@ def run_projection_demo(
 
         for level in range(refinements):
             level_start = time.perf_counter()
-            space = space_type(view)
-            if space.localDofs >= 15:
-                quad_order = 10
-            elif space.localDofs >= 10:
-                quad_order = 8
-            elif space.localDofs > 3:
-                quad_order = 6
-            else:
-                quad_order = 4
+            space = make_space(view)
+            quad_order = 2 * space.order + 2
             h = mesh_size(view)
 
             print(
@@ -143,8 +127,8 @@ def run_projection_demo(
             view.hierarchicalGrid.globalRefine(2)
 
         total_elapsed = time.perf_counter() - space_start
-        histories[space_type.__name__] = history
-        print(f"Total runtime for {space_type.__name__}: {total_elapsed:.3f} s")
+        histories[name] = history
+        print(f"Total runtime for {name}: {total_elapsed:.3f} s")
         print()
 
     if plot_eoc:
@@ -157,8 +141,8 @@ def run_projection_demo(
 
     if compare_mapped:
         _, compare_view = build_demo_view()
-        space_global = QuarticHermitePhysicalVEMSpace(compare_view)
-        space_mapped = QuarticHermiteMappedVEMSpace(compare_view)
+        space_global = VEMSpace(compare_view, 4, element="hermite")
+        space_mapped = VEMSpace(compare_view, 4, element="hermite", mapped=True)
         return compare_projectors(
             space_global,
             space_mapped,
@@ -171,21 +155,20 @@ def run_projection_demo(
 
 
 if __name__ == "__main__":
+    SPACES = (("lagrange", 1), ("lagrange", 2), ("hermite", 3), ("hermite", 4))
     run_projection_demo(
-        spaces=(
-            LinearLagrangeSpace,
-            QuadraticLagrangeSpace,
-            CubicHermiteSpace,
-            QuarticHermiteSpace,
-            LinearLagrangePhysicalVEMSpace,
-            LinearLagrangeMappedVEMSpace,
-            QuadraticLagrangePhysicalVEMSpace,
-            QuadraticLagrangeMappedVEMSpace,
-            CubicHermitePhysicalVEMSpace,
-            CubicHermiteMappedVEMSpace,
-            QuarticHermitePhysicalVEMSpace,
-            QuarticHermiteMappedVEMSpace,
-        ),
+        spaces={
+            **{
+                f"{element} k={k} FEM": partial(FEMSpace, order=k, element=element)
+                for element, k in SPACES
+            },
+            **{
+                f"{element} k={k} {'mapped' if mapped else 'physical'} VEM":
+                    partial(VEMSpace, order=k, element=element, mapped=mapped)
+                for element, k in SPACES
+                for mapped in (False, True)
+            },
+        },
         compare_mapped=False,
         refinements=3,
         plot=False,

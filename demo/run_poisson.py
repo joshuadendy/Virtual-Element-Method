@@ -1,3 +1,4 @@
+from functools import partial
 import numpy
 import matplotlib.pyplot as plt
 import scipy.sparse.linalg
@@ -6,18 +7,8 @@ from dune.grid import cartesianDomain, gridFunction
 from dune.alugrid import aluConformGrid
 
 from VEM import (
-    CubicHermiteMappedVEMSpace,
-    CubicHermitePhysicalVEMSpace,
-    CubicHermiteSpace,
-    QuarticHermiteMappedVEMSpace,
-    QuarticHermitePhysicalVEMSpace,
-    QuarticHermiteSpace,
-    LinearLagrangeMappedVEMSpace,
-    LinearLagrangePhysicalVEMSpace,
-    LinearLagrangeSpace,
-    QuadraticLagrangeMappedVEMSpace,
-    QuadraticLagrangePhysicalVEMSpace,
-    QuadraticLagrangeSpace,
+    FEMSpace,
+    VEMSpace,
     apply_dirichlet,
     assemble_poisson,
     compare_gradient_projectors,
@@ -28,7 +19,7 @@ from VEM import (
 
 
 def run_poisson_demo(
-    spaces=(LinearLagrangeMappedVEMSpace,),
+    spaces={"lagrange k=1 mapped VEM": partial(VEMSpace, order=1, mapped=True)},
     refinements=3,
     plot=False,
     plot_true_solution=False,
@@ -116,12 +107,8 @@ def run_poisson_demo(
         """
         ids = set()
 
-        if space.localDofs in (10, 12, 15, 18):
-            edge_slots = []
-            if space.localDofs == 15:
-                edge_slots = [9, 10, 11]
-            elif space.localDofs == 18:
-                edge_slots = [9, 10, 11]
+        if space.element == "hermite":
+            edge_slots = range(9, space.localDofs)
 
             for e in space.view.elements:
                 idx = numpy.asarray(space.mapper(e), dtype=int)
@@ -174,8 +161,8 @@ def run_poisson_demo(
 
     histories = {}
 
-    for space_type in spaces:
-        print("Testing space:", space_type.__name__)
+    for name, make_space in spaces.items():
+        print("Testing space:", name)
         space_start = time.perf_counter()
         old_err = None
         history = []
@@ -185,17 +172,10 @@ def run_poisson_demo(
             _, view = build_demo_view(level)
             u = make_exact_solution(view)
             f = make_rhs(view)
-            space = space_type(view)
+            space = make_space(view)
             h = mesh_size(view)
 
-            if space.localDofs >= 15:
-                quad_order = 10
-            elif space.localDofs >= 10:
-                quad_order = 8
-            elif space.localDofs > 3:
-                quad_order = 6
-            else:
-                quad_order = 4
+            quad_order = 2 * space.order + 2
 
             print(
                 "level ", level, ":",
@@ -264,8 +244,8 @@ def run_poisson_demo(
             old_err = err
 
         total_elapsed = time.perf_counter() - space_start
-        histories[space_type.__name__] = history
-        print(f"Total runtime for {space_type.__name__}: {total_elapsed:.3f} s")
+        histories[name] = history
+        print(f"Total runtime for {name}: {total_elapsed:.3f} s")
         print()
 
     if plot_eoc:
@@ -278,8 +258,8 @@ def run_poisson_demo(
 
     if compare_mapped:
         _, compare_view = build_demo_view(level=0)
-        space_physical = QuarticHermitePhysicalVEMSpace(compare_view)
-        space_mapped = QuarticHermiteMappedVEMSpace(compare_view)
+        space_physical = VEMSpace(compare_view, 4, element="hermite")
+        space_mapped = VEMSpace(compare_view, 4, element="hermite", mapped=True)
         return compare_gradient_projectors(
             space_physical,
             space_mapped,
@@ -291,21 +271,20 @@ def run_poisson_demo(
 
 
 if __name__ == "__main__":
+    SPACES = (("lagrange", 1), ("lagrange", 2), ("hermite", 3), ("hermite", 4))
     run_poisson_demo(
-        spaces=(
-            LinearLagrangeSpace,
-            QuadraticLagrangeSpace,
-            CubicHermiteSpace,
-            QuarticHermiteSpace,
-            LinearLagrangePhysicalVEMSpace,
-            LinearLagrangeMappedVEMSpace,
-            QuadraticLagrangePhysicalVEMSpace,
-            QuadraticLagrangeMappedVEMSpace,
-            CubicHermitePhysicalVEMSpace,
-            CubicHermiteMappedVEMSpace,
-            QuarticHermitePhysicalVEMSpace,
-            QuarticHermiteMappedVEMSpace,
-        ),
+        spaces={
+            **{
+                f"{element} k={k} FEM": partial(FEMSpace, order=k, element=element)
+                for element, k in SPACES
+            },
+            **{
+                f"{element} k={k} {'mapped' if mapped else 'physical'} VEM":
+                    partial(VEMSpace, order=k, element=element, mapped=mapped)
+                for element, k in SPACES
+                for mapped in (False, True)
+            },
+        },
         refinements=3,
         plot=False,
         plot_true_solution=False,
