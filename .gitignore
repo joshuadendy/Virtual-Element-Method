@@ -5,3 +5,4 @@ src/VEM.egg-info/
 .vscode/settings.json
 .tmp/
 .venv/
+.claude/tmp/

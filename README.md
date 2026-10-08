@@ -138,6 +138,8 @@ The package currently exposes the following space families through `VEM`:
 - `QuarticHermiteMappedVEMSpace`
 - `QuarticHermitePhysicalVEMSpace`
 
+The fixed-order VEM classes are thin wrappers around `PhysicalVEMSpace(view, order, hermite=False)` and `MappedVEMSpace(view, order, hermite=False)`, which build the Lagrange-type (`k >= 1`) or Hermite-type (`k >= 3`) spaces of `VEM_Maps.pdf` Section 5 at any order.
+
 ## Notes
 
 - The current implementation is focused on **triangular meshes**.

@@ -12,15 +12,10 @@ from .scaled_monomials import (
     P3_EXPONENTS,
     monomials,
     monomial_gradients,
-    scaled_coords,
     scaled_monomials,
     scaled_monomial_gradients,
-    monomial_linear_transform_matrix,
-    scaled_monomial_inverse_pullback_matrix,
+    total_degree_exponents,
 )
 from .cls_projector import solve_cls_kkt_all_rhs
-from .hermite_mapping import (
-    build_cubic_hermite_transform,
-    build_k3_mapped_transform,
-)
+from .hermite_mapping import build_cubic_hermite_transform
 from .vertex_scaling import build_vertex_effective_h
