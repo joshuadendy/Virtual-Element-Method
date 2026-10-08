@@ -1,8 +1,8 @@
 import numpy
 
-from ..base import SpaceBase
-from ..common.scaled_monomials import scaled_monomial_gradients, scaled_monomials, total_degree_exponents
-from ..common.triangle_geometry import EDGES, REFERENCE_TRIANGLE_VERTICES, bind_affine_triangle
+from .base import SpaceBase
+from .common.scaled_monomials import scaled_monomial_gradients, scaled_monomials, total_degree_exponents
+from .common.triangle_geometry import EDGES, REFERENCE_TRIANGLE_VERTICES, bind_affine_triangle
 
 
 class FEMSpace(SpaceBase):

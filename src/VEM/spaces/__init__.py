@@ -1,4 +1,4 @@
-"""Space definitions and shared space utilities."""
+"""Finite and virtual element spaces."""
 
-from .finite import *
-from .virtual import *
+from .fem_space import FEMSpace
+from .vem_space import VEMSpace

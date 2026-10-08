@@ -1,11 +1,11 @@
 import numpy
 from dune.geometry import quadratureRule
 
-from ..base import SpaceBase
-from ..common.cls_projector import solve_cls_kkt_all_rhs
-from ..common.scaled_monomials import scaled_monomial_gradients, scaled_monomials, total_degree_exponents
-from ..common.triangle_geometry import EDGES, REFERENCE_TRIANGLE_VERTICES, bind_affine_triangle
-from ..common.vertex_scaling import build_vertex_effective_h
+from .base import SpaceBase
+from .common.cls_projector import solve_cls_kkt_all_rhs
+from .common.scaled_monomials import scaled_monomial_gradients, scaled_monomials, total_degree_exponents
+from .common.triangle_geometry import EDGES, REFERENCE_TRIANGLE_VERTICES, bind_affine_triangle
+from .common.vertex_scaling import build_vertex_effective_h
 
 
 class VEMSpace(SpaceBase):

@@ -1,4 +1,4 @@
-"""Common base interface for all finite/virtual element spaces."""
+"""Common base interface for the finite and virtual element spaces."""
 
 
 class SpaceBase:

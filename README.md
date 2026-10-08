@@ -6,22 +6,15 @@ A small Python implementation of finite element and virtual element construction
 
 This repository provides:
 
-- **Classical finite element spaces** on triangles:
-  - linear Lagrange
-  - quadratic Lagrange
-  - cubic Hermite
-  - quartic Hermite
-- **Virtual element spaces** on triangles:
-  - k=1,2 Lagrange-type VEM
-  - k=3,4 Hermite-type VEM
-  - both **physical** and **mapped/reference-based** variants
+- **Classical finite element spaces** on triangles: `C0` Lagrange (`k >= 1`) and Hermite (`k >= 3`) elements of any order.
+- **Virtual element spaces** on triangles: the Lagrange-type (`k >= 1`) and Hermite-type (`k >= 3`) spaces of [VEM_Maps.pdf](VEM_Maps.pdf) Section 5 at any order, with projections either assembled on each **physical** element or **mapped** from the reference triangle.
 - **Assembly routines** for:
   - an **L2 projection** problem
   - a **Poisson** problem with Dirichlet boundary conditions
 - **Diagnostics** for comparing:
   - mapped vs physical value projectors
   - mapped vs physical gradient projectors
-  - approximation errors
+  - approximation errors and convergence rates
 
 The project is intended as a compact implementation of the ideas in the attached paper rather than a full general-purpose VEM library.
 
@@ -31,25 +24,34 @@ The project is intended as a compact implementation of the ideas in the attached
 .
 ├── demo/
 │   ├── run_l2_projection.py
-│   └── run_poisson.py
+│   ├── run_poisson.py
+│   └── side_projects/
 ├── src/
 │   └── VEM/
+│       ├── spaces/
+│       │   ├── fem_space.py
+│       │   ├── vem_space.py
+│       │   ├── base.py
+│       │   └── common/
 │       ├── assembly/
-│       ├── diagnostics/
-│       └── spaces/
+│       └── diagnostics/
+├── VEM_Maps.pdf
 ├── pyproject.toml
-├── requirements.txt
 └── README.md
 ```
 
 ### Main modules
 
-- `src/VEM/spaces/`
-  Finite element and virtual element space definitions.
+- `src/VEM/spaces/fem_space.py`
+  `FEMSpace`: classical finite elements, with the nodal basis built on the reference triangle and mapped to each element.
+- `src/VEM/spaces/vem_space.py`
+  `VEMSpace`: virtual elements with the constrained least-squares value projection and the gradient projection, physical or reference-mapped.
+- `src/VEM/spaces/common/`
+  Shared triangle geometry, scaled monomials, the constrained least-squares solver and vertex length scales.
 - `src/VEM/assembly/`
   Global assembly routines for the demo problems.
 - `src/VEM/diagnostics/`
-  Error measures and mapped-vs-physical comparison tools.
+  Error measures, convergence rates and mapped-vs-physical comparison tools.
 - `demo/`
   Small runnable examples showing how to assemble and solve the implemented model problems.
 
@@ -101,7 +103,7 @@ python demo/run_l2_projection.py
 
 This script:
 - builds a triangular grid on the unit square,
-- constructs one or more finite/VEM spaces,
+- constructs one or more FEM/VEM spaces,
 - assembles the `L2` projection system,
 - solves for the coefficients,
 - reports errors,
@@ -123,10 +125,30 @@ This script:
 
 ## Available spaces
 
-The package currently exposes the following space families through `VEM`:
+Both space classes are exposed through `VEM` and share the same interface (`bind`, `evaluateLocal`, `evaluateLocalGradient`, `interpolate`, `mapper`, `localDofs`):
 
-- `FEMSpace(view, order, element="lagrange")`: classical `C0` Lagrange (`k >= 1`) or Hermite (`element="hermite"`, `k >= 3`) finite elements of any order, with the nodal basis built on the reference triangle and mapped to each element.
-- `VEMSpace(view, order, element="lagrange", mapped=False)`: the Lagrange-type (`k >= 1`) or Hermite-type (`element="hermite"`, `k >= 3`) virtual element spaces of `VEM_Maps.pdf` Section 5 at any order, assembled on each physical element or, with `mapped=True`, mapped from the reference triangle.
+- `FEMSpace(view, order, element="lagrange")`
+- `VEMSpace(view, order, element="lagrange", mapped=False)`
+
+`element` is `"lagrange"` (`order >= 1`) or `"hermite"` (`order >= 3`). For `VEMSpace`, `evaluateLocal` and `evaluateLocalGradient` return the value projection and gradient projection of the virtual basis, and `mapped=True` evaluates the reference-mapped projections of Section 4.2 instead of assembling them on each element.
+
+```python
+from VEM import FEMSpace, VEMSpace
+
+fem = FEMSpace(view, 2)
+vem = VEMSpace(view, 4, element="hermite", mapped=True)
+```
+
+The demos take a dictionary of named space factories, for example:
+
+```python
+from functools import partial
+
+run_poisson_demo(spaces={
+    "hermite k=4 FEM": partial(FEMSpace, order=4, element="hermite"),
+    "hermite k=4 mapped VEM": partial(VEMSpace, order=4, element="hermite", mapped=True),
+})
+```
 
 ## Notes
 
