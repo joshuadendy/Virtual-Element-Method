@@ -2,8 +2,16 @@ import numpy
 from dune.geometry import quadratureRule
 import scipy.sparse
 
-def assemble_l2_projection(space, force, quad_order):
-    """Assemble the global mass matrix and right-hand side for a space."""
+from .poisson import _build_local_stabilisation
+
+
+def assemble_l2_projection(space, force, quad_order, stabilisation="none", stabilisation_scale=1.0):
+    """
+    Assemble the global mass matrix and right-hand side for a space.
+
+    With stabilisation="auto", spaces providing localProjectorDofs() get the
+    dof-space stabilisation scaled by |E|, matching the scaling of the mass matrix.
+    """
     rhs = numpy.zeros(len(space.mapper))
 
     local_entries = space.localDofs
@@ -28,6 +36,15 @@ def assemble_l2_projection(space, force, quad_order):
 
             rhs[indices] += w * force(e, x) * phi_vals
             local_matrix += w * numpy.outer(phi_vals, phi_vals)
+
+        stab = _build_local_stabilisation(
+            space,
+            local_matrix,
+            mode=stabilisation,
+            scale=stabilisation_scale * geo.volume,
+        )
+        if stab is not None:
+            local_matrix += stab
 
         for i in range(local_entries):
             for j in range(local_entries):

@@ -115,7 +115,11 @@ def boundary_elimination(space):
     return scipy.sparse.csr_matrix((vals, (rows, cols)), shape=(n, col))
 
 
-def sample_solution(space, dofs, level=3):
+def sample_matrix(space, level=3):
+    """
+    Return plot points, the sparse matrix S mapping dofs to the field sampled at
+    them, and the plot triangles, so that a dof vector plots as S @ dofs.
+    """
     m = 2 ** level
     ref = numpy.array([[i / m, j / m] for j in range(m + 1) for i in range(m + 1 - j)])
     index = {(i, j): k for k, (i, j) in enumerate((i, j) for j in range(m + 1) for i in range(m + 1 - j))}
@@ -127,20 +131,33 @@ def sample_solution(space, dofs, level=3):
                 sub.append((index[i + 1, j], index[i + 1, j + 1], index[i, j + 1]))
     sub = numpy.array(sub)
 
-    pts, vals, tris = [], [], []
+    pts, rows, cols, vals, tris = [], [], [], [], []
     for e in space.view.elements:
         space.bind(e)
-        local = dofs[numpy.asarray(space.mapper(e), dtype=int)]
-        tris.append(sub + len(pts) * len(ref))
+        idx = numpy.asarray(space.mapper(e), dtype=int)
+        base = len(pts) * len(ref)
+        phi = numpy.array([numpy.asarray(space.evaluateLocal(x), dtype=float).reshape(-1) for x in ref])
+        rows.append(numpy.repeat(numpy.arange(base, base + len(ref)), len(idx)))
+        cols.append(numpy.tile(idx, len(ref)))
+        vals.append(phi.ravel())
+        tris.append(sub + base)
         pts.append([e.geometry.toGlobal(x) for x in ref])
-        vals.append([local.dot(numpy.asarray(space.evaluateLocal(x), dtype=float).reshape(-1)) for x in ref])
     # Average the (slightly nonconforming) Pi_0 values at shared sample points
     # so the plotted field is connected and contours don't break at edges.
-    pts, vals, tris = numpy.vstack(pts), numpy.concatenate(vals), numpy.vstack(tris)
+    pts, tris = numpy.vstack(pts), numpy.vstack(tris)
     _, first, inverse = numpy.unique(numpy.round(pts, 9), axis=0, return_index=True, return_inverse=True)
     inverse = inverse.ravel()
-    merged = numpy.bincount(inverse, vals) / numpy.bincount(inverse)
-    return pts[first], merged, inverse[tris]
+    values = scipy.sparse.csr_matrix(
+        (numpy.concatenate(vals), (numpy.concatenate(rows), numpy.concatenate(cols))),
+        shape=(len(pts), len(space.mapper)),
+    )
+    average = scipy.sparse.csr_matrix((1.0 / numpy.bincount(inverse)[inverse], (inverse, numpy.arange(len(pts)))))
+    return pts[first], (average @ values).tocsr(), inverse[tris]
+
+
+def sample_solution(space, dofs, level=3):
+    pts, S, tris = sample_matrix(space, level)
+    return pts, S @ dofs, tris
 
 
 def crescent_path(r1=0.75, r2=0.64, d=0.24, angle=0.6):

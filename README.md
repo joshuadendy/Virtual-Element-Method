@@ -11,6 +11,7 @@ This repository provides:
 - **Assembly routines** for:
   - an **L2 projection** problem
   - a **Poisson** problem with Dirichlet boundary conditions
+  - a **heat equation** with theta-scheme timestepping (backward Euler / Crank-Nicolson)
 - **Diagnostics** for comparing:
   - mapped vs physical value projectors
   - mapped vs physical gradient projectors
@@ -23,6 +24,7 @@ The project is intended as a compact implementation of the ideas in the attached
 ```text
 .
 ├── demo/
+│   ├── run_heat.py
 │   ├── run_l2_projection.py
 │   ├── run_poisson.py
 │   └── side_projects/
@@ -122,6 +124,18 @@ This script:
 - solves the resulting linear system,
 - reports projected `L2` and `H1`-seminorm errors,
 - and can optionally compare mapped and physical gradient projectors and plot.
+
+### Heat equation demo
+
+```bash
+python demo/run_heat.py
+```
+
+This script:
+- solves `u_t - Laplace u = f` with the manufactured solution `u = (1 + t) sin(pi x) sin(pi y)`,
+- assembles the stiffness matrix and a VEM mass matrix stabilised by `|E| (I - P)^T (I - P)`,
+- steps with the theta-scheme (`theta=1/2` Crank-Nicolson, `theta=1` backward Euler), factorising the system once,
+- and reports projected `L2` and `H1`-seminorm errors at the final time; the solution is linear in time, so these show the spatial rates.
 
 ## Available spaces
 
