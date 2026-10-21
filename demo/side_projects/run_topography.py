@@ -1,4 +1,5 @@
 import io
+import os
 
 import numpy
 import matplotlib.pyplot as plt
@@ -13,6 +14,8 @@ from dune.alugrid import aluConformGrid
 
 from VEM import VEMSpace, assemble_poisson
 from VEM.assembly import assemble_l2_projection
+
+FIGS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "figs")
 
 MAP = LinearSegmentedColormap.from_list("map", [
     (0.00, "#1b3f6b"), (0.30, "#3f7fb5"), (0.49, "#a9d6e5"),
@@ -249,7 +252,7 @@ def render_icon(pts, tris, h, filename, size=192, R=1.0, n_sea=4, n_land=8):
     Image.open(buf).convert("RGB").resize((size, size), Image.LANCZOS).save(filename)
 
 
-def run_topography(kappa=11.0, sea_level=0.3, h_land=0.02, h_outer=0.035, filename=".tmp/topography.png"):
+def run_topography(kappa=11.0, sea_level=0.3, h_land=0.02, h_outer=0.035, filename=os.path.join(FIGS, "topography.png")):
     crescent, bay = crescent_path()
     cluster, islet_peaks = islets(bay)
     land = Path.make_compound_path(crescent, *cluster)

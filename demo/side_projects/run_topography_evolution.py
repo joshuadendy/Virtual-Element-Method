@@ -1,3 +1,5 @@
+import os
+
 import numpy
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
@@ -7,7 +9,7 @@ from matplotlib.tri import Triangulation
 from dune.alugrid import aluConformGrid
 
 from VEM import VEMSpace, assemble_l2_projection, assemble_poisson, solve_heat
-from run_topography import MAP, boundary_elimination, build_mesh, crescent_path, inside_land, islets, peaks, sample_matrix
+from run_topography import FIGS, MAP, boundary_elimination, build_mesh, crescent_path, inside_land, islets, peaks, sample_matrix
 
 
 def smoothstep(t, a, b):
@@ -23,7 +25,7 @@ def run_topography_evolution(
     steps_per_frame=2,
     crescent_ramp=(0.0, 0.015),
     islet_ramp=(0.03, 0.045),
-    filename=".tmp/island_evolution.gif",
+    filename=os.path.join(FIGS, "island_evolution.gif"),
 ):
     """
     Grow the run_topography landscape from a flat seabed by solving

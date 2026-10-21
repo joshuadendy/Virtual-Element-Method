@@ -6,3 +6,6 @@ src/VEM.egg-info/
 .tmp/
 .venv/
 .claude/tmp/
+
+demo/figs/*
+!demo/figs/.gitkeep
