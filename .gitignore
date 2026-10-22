@@ -9,3 +9,4 @@ src/VEM.egg-info/
 
 demo/figs/*
 !demo/figs/.gitkeep
+.agents/

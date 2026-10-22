@@ -19,6 +19,7 @@ def unit_square_boundary_dofs(space, tol=1e-12):
     coordinate-aligned. On a general polygon, tangential constraints would be
     linear combinations of dx/dy dofs instead.
     """
+
     def on_boundary(x, y):
         return abs(x) < tol or abs(x - 1.0) < tol or abs(y) < tol or abs(y - 1.0) < tol
 
@@ -31,7 +32,9 @@ def unit_square_boundary_dofs(space, tol=1e-12):
             idx = numpy.asarray(space.mapper(e), dtype=int)
 
             for base in (0, 3, 6):
-                x, y = e.geometry.toGlobal(numpy.asarray(space.points[base], dtype=float))
+                x, y = e.geometry.toGlobal(
+                    numpy.asarray(space.points[base], dtype=float)
+                )
 
                 if on_boundary(x, y):
                     ids.add(int(idx[base]))
@@ -43,7 +46,9 @@ def unit_square_boundary_dofs(space, tol=1e-12):
                     ids.add(int(idx[base + 2]))
 
             for slot in edge_slots:
-                x, y = e.geometry.toGlobal(numpy.asarray(space.points[slot], dtype=float))
+                x, y = e.geometry.toGlobal(
+                    numpy.asarray(space.points[slot], dtype=float)
+                )
                 if on_boundary(x, y):
                     ids.add(int(idx[slot]))
 

@@ -1,24 +1,33 @@
 import io
 
-import numpy
 import matplotlib.pyplot as plt
+import numpy
 import scipy.sparse
 import scipy.sparse.linalg
 import triangle
+from dune.alugrid import aluConformGrid
 from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
 from matplotlib.path import Path
 from matplotlib.tri import Triangulation
 from PIL import Image
-from dune.alugrid import aluConformGrid
 
 from VEM import VEMSpace, assemble_poisson
 from VEM.assembly import assemble_l2_projection
 
-MAP = LinearSegmentedColormap.from_list("map", [
-    (0.00, "#1b3f6b"), (0.30, "#3f7fb5"), (0.49, "#a9d6e5"),
-    (0.50, "#e8dcae"), (0.56, "#a7c98a"), (0.68, "#6f9e5c"),
-    (0.82, "#b49a6c"), (0.93, "#8a6a48"), (1.00, "#f6f3ec"),
-])
+MAP = LinearSegmentedColormap.from_list(
+    "map",
+    [
+        (0.00, "#1b3f6b"),
+        (0.30, "#3f7fb5"),
+        (0.49, "#a9d6e5"),
+        (0.50, "#e8dcae"),
+        (0.56, "#a7c98a"),
+        (0.68, "#6f9e5c"),
+        (0.82, "#b49a6c"),
+        (0.93, "#8a6a48"),
+        (1.00, "#f6f3ec"),
+    ],
+)
 
 
 def inside_land(path, points):
@@ -30,26 +39,36 @@ def inside_land(path, points):
 def resample(poly, h):
     poly = poly[:-1] if numpy.allclose(poly[0], poly[-1]) else poly
     closed = numpy.vstack((poly, poly[:1]))
-    s = numpy.concatenate(([0.0], numpy.cumsum(numpy.linalg.norm(numpy.diff(closed, axis=0), axis=1))))
+    s = numpy.concatenate(
+        ([0.0], numpy.cumsum(numpy.linalg.norm(numpy.diff(closed, axis=0), axis=1)))
+    )
     t = numpy.linspace(0.0, s[-1], max(int(s[-1] / h), 8), endpoint=False)
-    return numpy.column_stack((numpy.interp(t, s, closed[:, 0]), numpy.interp(t, s, closed[:, 1])))
+    return numpy.column_stack(
+        (numpy.interp(t, s, closed[:, 0]), numpy.interp(t, s, closed[:, 1]))
+    )
 
 
 def build_mesh(path, R=1.0, h_land=0.02, h_outer=0.035):
-    outer = resample(R * numpy.array([[-1, -1], [1, -1], [1, 1], [-1, 1]], dtype=float), h_outer)
+    outer = resample(
+        R * numpy.array([[-1, -1], [1, -1], [1, 1], [-1, 1]], dtype=float), h_outer
+    )
     loops = [outer] + [resample(p, h_land) for p in path.to_polygons()]
     vertices, segments, offset = [], [], 0
     for loop in loops:
         k = len(loop)
         vertices.append(loop)
-        segments.append(offset + numpy.column_stack((numpy.arange(k), (numpy.arange(k) + 1) % k)))
+        segments.append(
+            offset + numpy.column_stack((numpy.arange(k), (numpy.arange(k) + 1) % k))
+        )
         offset += k
     pslg = {"vertices": numpy.vstack(vertices), "segments": numpy.vstack(segments)}
 
-    mesh = triangle.triangulate(pslg, f"pq30a{0.5 * h_outer ** 2}")
+    mesh = triangle.triangulate(pslg, f"pq30a{0.5 * h_outer**2}")
     centroids = mesh["vertices"][mesh["triangles"]].mean(axis=1)
     inside = inside_land(path, centroids)
-    mesh["triangle_max_area"] = numpy.where(inside, 0.5 * h_land ** 2, 0.5 * h_outer ** 2)[:, None]
+    mesh["triangle_max_area"] = numpy.where(inside, 0.5 * h_land**2, 0.5 * h_outer**2)[
+        :, None
+    ]
     mesh = triangle.triangulate(mesh, "rpq30a")
 
     # Jitter interior vertices so the polygonal mesh shows through the contours.
@@ -120,9 +139,14 @@ def sample_matrix(space, level=3):
     Return plot points, the sparse matrix S mapping dofs to the field sampled at
     them, and the plot triangles, so that a dof vector plots as S @ dofs.
     """
-    m = 2 ** level
+    m = 2**level
     ref = numpy.array([[i / m, j / m] for j in range(m + 1) for i in range(m + 1 - j)])
-    index = {(i, j): k for k, (i, j) in enumerate((i, j) for j in range(m + 1) for i in range(m + 1 - j))}
+    index = {
+        (i, j): k
+        for k, (i, j) in enumerate(
+            (i, j) for j in range(m + 1) for i in range(m + 1 - j)
+        )
+    }
     sub = []
     for j in range(m):
         for i in range(m - j):
@@ -136,7 +160,12 @@ def sample_matrix(space, level=3):
         space.bind(e)
         idx = numpy.asarray(space.mapper(e), dtype=int)
         base = len(pts) * len(ref)
-        phi = numpy.array([numpy.asarray(space.evaluateLocal(x), dtype=float).reshape(-1) for x in ref])
+        phi = numpy.array(
+            [
+                numpy.asarray(space.evaluateLocal(x), dtype=float).reshape(-1)
+                for x in ref
+            ]
+        )
         rows.append(numpy.repeat(numpy.arange(base, base + len(ref)), len(idx)))
         cols.append(numpy.tile(idx, len(ref)))
         vals.append(phi.ravel())
@@ -145,13 +174,17 @@ def sample_matrix(space, level=3):
     # Average the (slightly nonconforming) Pi_0 values at shared sample points
     # so the plotted field is connected and contours don't break at edges.
     pts, tris = numpy.vstack(pts), numpy.vstack(tris)
-    _, first, inverse = numpy.unique(numpy.round(pts, 9), axis=0, return_index=True, return_inverse=True)
+    _, first, inverse = numpy.unique(
+        numpy.round(pts, 9), axis=0, return_index=True, return_inverse=True
+    )
     inverse = inverse.ravel()
     values = scipy.sparse.csr_matrix(
         (numpy.concatenate(vals), (numpy.concatenate(rows), numpy.concatenate(cols))),
         shape=(len(pts), len(space.mapper)),
     )
-    average = scipy.sparse.csr_matrix((1.0 / numpy.bincount(inverse)[inverse], (inverse, numpy.arange(len(pts)))))
+    average = scipy.sparse.csr_matrix(
+        (1.0 / numpy.bincount(inverse)[inverse], (inverse, numpy.arange(len(pts))))
+    )
     return pts[first], (average @ values).tocsr(), inverse[tris]
 
 
@@ -162,15 +195,17 @@ def sample_solution(space, dofs, level=3):
 
 def crescent_path(r1=0.75, r2=0.64, d=0.24, angle=0.6):
     # Disc of radius r1 minus a disc of radius r2 offset by d along x.
-    x = (d ** 2 + r1 ** 2 - r2 ** 2) / (2 * d)
-    y = numpy.sqrt(r1 ** 2 - x ** 2)
+    x = (d**2 + r1**2 - r2**2) / (2 * d)
+    y = numpy.sqrt(r1**2 - x**2)
     phi, psi = numpy.arctan2(y, x), numpy.arctan2(y, x - d)
     a = numpy.linspace(phi, 2 * numpy.pi - phi, 160)
     b = numpy.linspace(2 * numpy.pi - psi, psi, 120)[1:-1]
-    verts = numpy.vstack((
-        numpy.column_stack((r1 * numpy.cos(a), r1 * numpy.sin(a))),
-        numpy.column_stack((d + r2 * numpy.cos(b), r2 * numpy.sin(b))),
-    ))
+    verts = numpy.vstack(
+        (
+            numpy.column_stack((r1 * numpy.cos(a), r1 * numpy.sin(a))),
+            numpy.column_stack((d + r2 * numpy.cos(b), r2 * numpy.sin(b))),
+        )
+    )
     c, s = numpy.cos(angle), numpy.sin(angle)
     rot = numpy.array([[c, s], [-s, c]])
     verts = verts @ rot
@@ -190,16 +225,27 @@ def peaks(path, n=9, seed=3):
     return centres, rng.uniform(1.5, 4.0, n), rng.uniform(0.05, 0.1, n)
 
 
+def uplift(x, centres, heights, widths):
+    # Unit base plus a Gaussian bump of height h and width w at each centre.
+    r2 = numpy.sum((x - centres) ** 2, axis=1)
+    return 1.0 + numpy.sum(heights * numpy.exp(-r2 / widths**2))
+
+
 def islets(bay, seed=5):
-    # Lumpy discs clustered up and to the right of the bay's centre, each with its own peak.
+    # Lumpy discs clustered up and to the right of the bay's centre,
+    # each with its own peak.
     rng = numpy.random.default_rng(seed)
-    spec = numpy.array([[0.15, 0.1, 0.08], [0.47, -0.02, 0.07], [0.05, 0.45, 0.07], [0.42, 0.34, 0.06]])
+    spec = numpy.array(
+        [[0.15, 0.1, 0.08], [0.47, -0.02, 0.07], [0.05, 0.45, 0.07], [0.42, 0.34, 0.06]]
+    )
     centres = bay + spec[:, :2]
     theta = numpy.linspace(0.0, 2 * numpy.pi, 48, endpoint=False)
     paths = []
     for c, r in zip(centres, spec[:, 2]):
         rr = r * (1 + 0.15 * numpy.sin(3 * theta + rng.uniform(0, 2 * numpy.pi)))
-        paths.append(Path(c + numpy.column_stack((rr * numpy.cos(theta), rr * numpy.sin(theta)))))
+        paths.append(
+            Path(c + numpy.column_stack((rr * numpy.cos(theta), rr * numpy.sin(theta))))
+        )
     return paths, (centres, rng.uniform(4.5, 6.5, len(spec)), spec[:, 2])
 
 
@@ -210,11 +256,28 @@ def render(V, T, pts, tris, h, filename, R=1.0, n_sea=8, n_land=18):
     tri = Triangulation(pts[:, 0], pts[:, 1], tris)
     sea = numpy.linspace(h.min(), 0.0, n_sea + 1)
     land = numpy.linspace(0.0, h.max(), n_land + 1)
-    ax.tricontourf(tri, h, levels=numpy.concatenate((sea, land[1:])), cmap=MAP, norm=TwoSlopeNorm(0.0, h.min(), h.max()))
-    ax.tricontour(tri, h, levels=sea[1:-1], colors="#1f4f7a", linewidths=0.4, alpha=0.45)
-    ax.tricontour(tri, h, levels=land[1:], colors="#5a3e22", linewidths=[0.9 if k % 5 == 4 else 0.35 for k in range(n_land)], alpha=0.7)
+    ax.tricontourf(
+        tri,
+        h,
+        levels=numpy.concatenate((sea, land[1:])),
+        cmap=MAP,
+        norm=TwoSlopeNorm(0.0, h.min(), h.max()),
+    )
+    ax.tricontour(
+        tri, h, levels=sea[1:-1], colors="#1f4f7a", linewidths=0.4, alpha=0.45
+    )
+    ax.tricontour(
+        tri,
+        h,
+        levels=land[1:],
+        colors="#5a3e22",
+        linewidths=[0.9 if k % 5 == 4 else 0.35 for k in range(n_land)],
+        alpha=0.7,
+    )
     ax.tricontour(tri, h, levels=[0.0], colors="#2b2118", linewidths=1.1)
-    ax.triplot(Triangulation(V[:, 0], V[:, 1], T), color="#2b2118", linewidth=0.2, alpha=0.06)
+    ax.triplot(
+        Triangulation(V[:, 0], V[:, 1], T), color="#2b2118", linewidth=0.2, alpha=0.06
+    )
 
     ax.set_xlim(-R, R)
     ax.set_ylim(-R, R)
@@ -236,9 +299,17 @@ def render_icon(pts, tris, h, filename, size=192, R=1.0, n_sea=4, n_land=8):
     tri = Triangulation(pts[:, 0], pts[:, 1], tris)
     sea = numpy.linspace(h.min(), 0.0, n_sea + 1)
     land = numpy.linspace(0.0, h.max(), n_land + 1)
-    ax.tricontourf(tri, h, levels=numpy.concatenate((sea, land[1:])), cmap=MAP, norm=TwoSlopeNorm(0.0, h.min(), h.max()))
+    ax.tricontourf(
+        tri,
+        h,
+        levels=numpy.concatenate((sea, land[1:])),
+        cmap=MAP,
+        norm=TwoSlopeNorm(0.0, h.min(), h.max()),
+    )
     ax.tricontour(tri, h, levels=sea[1:-1], colors="#2f6496", linewidths=1.5, alpha=0.6)
-    ax.tricontour(tri, h, levels=land[1:-1], colors="#6b4f2e", linewidths=1.5, alpha=0.7)
+    ax.tricontour(
+        tri, h, levels=land[1:-1], colors="#6b4f2e", linewidths=1.5, alpha=0.7
+    )
     ax.tricontour(tri, h, levels=[0.0], colors="#3b2a1a", linewidths=3.0)
     ax.set_xlim(-R, R)
     ax.set_ylim(-R, R)
@@ -249,7 +320,13 @@ def render_icon(pts, tris, h, filename, size=192, R=1.0, n_sea=4, n_land=8):
     Image.open(buf).convert("RGB").resize((size, size), Image.LANCZOS).save(filename)
 
 
-def run_topography(kappa=11.0, sea_level=0.3, h_land=0.02, h_outer=0.035, filename=".tmp/topography.png"):
+def run_topography(
+    kappa=11.0,
+    sea_level=0.3,
+    h_land=0.02,
+    h_outer=0.035,
+    filename=".tmp/topography.png",
+):
     crescent, bay = crescent_path()
     cluster, islet_peaks = islets(bay)
     land = Path.make_compound_path(crescent, *cluster)
@@ -261,26 +338,36 @@ def run_topography(kappa=11.0, sea_level=0.3, h_land=0.02, h_outer=0.035, filena
 
     # Uplift f = 1_land * (base + peaks); screened Poisson spreads it into
     # slopes that decay into the sea over a length of roughly 1/κ.
-    centres, heights, widths = (numpy.concatenate(p) for p in zip(peaks(crescent), islet_peaks))
-    bump = lambda x: 1.0 + sum(h * numpy.exp(-numpy.sum((x - c) ** 2) / w ** 2)
-                               for c, h, w in zip(centres, heights, widths))
+    centres, heights, widths = (
+        numpy.concatenate(p) for p in zip(peaks(crescent), islet_peaks)
+    )
     source = {}
     for e in view.elements:
         c = numpy.asarray(e.geometry.center)
-        source[view.indexSet.index(e)] = bump(c) if inside_land(land,c[None])[0] else 0.0
-    f = lambda e, x: source[view.indexSet.index(e)]
+        source[view.indexSet.index(e)] = (
+            uplift(c, centres, heights, widths)
+            if inside_land(land, c[None])[0]
+            else 0.0
+        )
+
+    def f(e, x):
+        return source[view.indexSet.index(e)]
 
     rhs, stiffness = assemble_poisson(space, f, quad_order=8)
     _, mass = assemble_l2_projection(space, f, quad_order=8)
     Q = boundary_elimination(space)
-    z = scipy.sparse.linalg.spsolve((Q.T @ (stiffness + kappa ** 2 * mass) @ Q).tocsc(), Q.T @ rhs)
+    z = scipy.sparse.linalg.spsolve(
+        (Q.T @ (stiffness + kappa**2 * mass) @ Q).tocsc(), Q.T @ rhs
+    )
     dofs = Q @ z
 
     pts, vals, tris = sample_solution(space, dofs)
     u = vals / vals.max()
     # Raise the land to a power so peaks sharpen while coasts stay gentle.
     d = u - sea_level
-    h = numpy.where(d > 0, (d / (1 - sea_level)).clip(0) ** 1.4, -(-d / sea_level).clip(0) ** 0.5)
+    h = numpy.where(
+        d > 0, (d / (1 - sea_level)).clip(0) ** 1.4, -((-d / sea_level).clip(0) ** 0.5)
+    )
     render_icon(pts, tris, h, filename.replace(".png", "_192.png"))
     return render(V, T, pts, tris, h, filename)
 

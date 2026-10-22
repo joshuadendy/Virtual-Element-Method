@@ -1,10 +1,11 @@
-from functools import partial
-import numpy
-import matplotlib.pyplot as plt
-import scipy.sparse.linalg
 import time
-from dune.grid import cartesianDomain, gridFunction
+from functools import partial
+
+import matplotlib.pyplot as plt
+import numpy
+import scipy.sparse.linalg
 from dune.alugrid import aluConformGrid
+from dune.grid import cartesianDomain, gridFunction
 
 from VEM import (
     FEMSpace,
@@ -37,8 +38,8 @@ def run_poisson_demo(
         """
         Rebuild a fresh structured grid on each level.
         """
-        nx = nx0 * (2 ** level)
-        ny = ny0 * (2 ** level)
+        nx = nx0 * (2**level)
+        ny = ny0 * (2**level)
         domain = cartesianDomain([0, 0], [1, 1], [nx, ny])
         return domain, aluConformGrid(domain)
 
@@ -50,10 +51,13 @@ def run_poisson_demo(
 
         def jacobian(e, xhat):
             x, y = e.geometry.toGlobal(xhat)
-            return numpy.array([
-                numpy.pi * numpy.cos(numpy.pi * x) * numpy.sin(numpy.pi * y),
-                numpy.pi * numpy.sin(numpy.pi * x) * numpy.cos(numpy.pi * y),
-            ], dtype=float)
+            return numpy.array(
+                [
+                    numpy.pi * numpy.cos(numpy.pi * x) * numpy.sin(numpy.pi * y),
+                    numpy.pi * numpy.sin(numpy.pi * x) * numpy.cos(numpy.pi * y),
+                ],
+                dtype=float,
+            )
 
         u.jacobian = jacobian
         return u
@@ -62,7 +66,9 @@ def run_poisson_demo(
         @gridFunction(view)
         def f(p):
             x, y = p
-            return 2.0 * (numpy.pi ** 2) * numpy.sin(numpy.pi * x) * numpy.sin(numpy.pi * y)
+            return (
+                2.0 * (numpy.pi**2) * numpy.sin(numpy.pi * x) * numpy.sin(numpy.pi * y)
+            )
 
         return f
 
@@ -107,10 +113,15 @@ def run_poisson_demo(
             quad_order = 2 * space.order + 2
 
             print(
-                "level ", level, ":",
-                "number of elements:", view.size(0),
-                "number of dofs:", len(space.mapper),
-                "mesh size h:", h,
+                "level ",
+                level,
+                ":",
+                "number of elements:",
+                view.size(0),
+                "number of dofs:",
+                len(space.mapper),
+                "mesh size h:",
+                h,
             )
 
             rhs, matrix = assemble_poisson(
@@ -133,20 +144,20 @@ def run_poisson_demo(
             if plot_true_solution:
                 fig1 = plt.figure(figsize=(7, 5))
                 u.plot(level=2, figure=fig1)
-                fig1.suptitle(f"Exact solution")
+                fig1.suptitle("Exact solution")
                 plt.show()
 
             if plot:
                 fig2 = plt.figure(figsize=(7, 5))
                 uh.plot(level=2, figure=fig2)
-                fig2.suptitle(f"Approximate solution")
+                fig2.suptitle("Approximate solution")
                 plt.show()
 
             if plot_error:
                 err, abs_err = make_error_functions(view, u, uh)
                 fig3 = plt.figure(figsize=(7, 5))
                 abs_err.plot(level=2, figure=fig3)
-                fig3.suptitle(f"Absolute error")
+                fig3.suptitle("Absolute error")
 
                 # Start the colourbar at zero
                 ax = fig3.axes[0]
@@ -209,8 +220,9 @@ if __name__ == "__main__":
                 for element, k in SPACES
             },
             **{
-                f"{element} k={k} {'mapped' if mapped else 'physical'} VEM":
-                    partial(VEMSpace, order=k, element=element, mapped=mapped)
+                f"{element} k={k} {'mapped' if mapped else 'physical'} VEM": partial(
+                    VEMSpace, order=k, element=element, mapped=mapped
+                )
                 for element, k in SPACES
                 for mapped in (False, True)
             },

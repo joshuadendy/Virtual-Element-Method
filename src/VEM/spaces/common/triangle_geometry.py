@@ -2,7 +2,6 @@
 
 import numpy
 
-
 REFERENCE_TRIANGLE_VERTICES = numpy.array(
     [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
     dtype=float,

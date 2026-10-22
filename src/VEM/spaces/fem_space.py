@@ -1,8 +1,16 @@
 import numpy
 
 from .base import SpaceBase
-from .common.scaled_monomials import scaled_monomial_gradients, scaled_monomials, total_degree_exponents
-from .common.triangle_geometry import EDGES, REFERENCE_TRIANGLE_VERTICES, bind_affine_triangle
+from .common.scaled_monomials import (
+    scaled_monomial_gradients,
+    scaled_monomials,
+    total_degree_exponents,
+)
+from .common.triangle_geometry import (
+    EDGES,
+    REFERENCE_TRIANGLE_VERTICES,
+    bind_affine_triangle,
+)
 
 
 class FEMSpace(SpaceBase):
@@ -32,7 +40,9 @@ class FEMSpace(SpaceBase):
             raise ValueError(f"Unknown element type {element!r}.")
         self._hermite = element == "hermite"
         if order < (3 if self._hermite else 1):
-            raise ValueError(f"order {order} is too low for a {element} finite element.")
+            raise ValueError(
+                f"order {order} is too low for a {element} finite element."
+            )
         self.view = view
         self.dim = view.dimension
         self.order = order
@@ -48,24 +58,32 @@ class FEMSpace(SpaceBase):
         self._edge_r = numpy.arange(1, self._ne + 1) / (self._ne + 1)
         s, n = (2 if self._hermite else 1), order - 3
         self._interior = numpy.array(
-            [[1 + s * a, 1 + s * b] for b in range(n + 1) for a in range(n + 1 - b)], dtype=float
+            [[1 + s * a, 1 + s * b] for b in range(n + 1) for a in range(n + 1 - b)],
+            dtype=float,
         ).reshape(-1, 2) / (3 + s * n)
-        self.points = numpy.vstack([
-            numpy.repeat(ref, self._nv, axis=0),
-            *(ref[a] + self._edge_r[:, None] * (ref[b] - ref[a]) for a, b in EDGES),
-            self._interior,
-        ])
+        self.points = numpy.vstack(
+            [
+                numpy.repeat(ref, self._nv, axis=0),
+                *(ref[a] + self._edge_r[:, None] * (ref[b] - ref[a]) for a, b in EDGES),
+                self._interior,
+            ]
+        )
 
         self._exps = total_degree_exponents(order)
-        self._coeffs = numpy.linalg.inv(self._apply_dofs(
-            lambda x: scaled_monomials(x, 0.0, 1.0, self._exps),
-            lambda x: scaled_monomial_gradients(x, 0.0, 1.0, self._exps),
-            EDGES,
-        ))
+        self._coeffs = numpy.linalg.inv(
+            self._apply_dofs(
+                lambda x: scaled_monomials(x, 0.0, 1.0, self._exps),
+                lambda x: scaled_monomial_gradients(x, 0.0, 1.0, self._exps),
+                EDGES,
+            )
+        )
         self.bind(ref)
 
     def _apply_dofs(self, f, df, edges):
-        """Local dofs of f(xhat) -> (n, m), with df(xhat) -> (n, m, 2) its physical gradient."""
+        """Local dofs of f(xhat) -> (n, m).
+
+        df(xhat) -> (n, m, 2) is the physical gradient of f.
+        """
         ref = REFERENCE_TRIANGLE_VERTICES
         fv = f(ref)
         dfv = df(ref) if self._hermite else None
@@ -93,29 +111,41 @@ class FEMSpace(SpaceBase):
         self.M = numpy.eye(self.localDofs)
         if self._hermite:
             for i in range(3):
-                self.M[3 * i + 1:3 * i + 3, 3 * i + 1:3 * i + 3] = self.J
+                self.M[3 * i + 1 : 3 * i + 3, 3 * i + 1 : 3 * i + 3] = self.J
         for i, (edge, ref_edge) in enumerate(zip(self._edges, EDGES)):
             if edge != ref_edge:
                 start = 3 * self._nv + i * self._ne
-                self.M[start:start + self._ne, start:start + self._ne] = numpy.eye(self._ne)[::-1]
+                self.M[start : start + self._ne, start : start + self._ne] = numpy.eye(
+                    self._ne
+                )[::-1]
 
     def evaluateLocal(self, x):
         return self.M @ (scaled_monomials(x, 0.0, 1.0, self._exps) @ self._coeffs)
 
     def evaluateLocalGradient(self, x):
-        return self.M @ (self._coeffs.T @ scaled_monomial_gradients(x, 0.0, 1.0, self._exps)) @ self.Jinv
+        return (
+            self.M
+            @ (self._coeffs.T @ scaled_monomial_gradients(x, 0.0, 1.0, self._exps))
+            @ self.Jinv
+        )
 
     def interpolate(self, gf):
         if self._hermite and not hasattr(gf, "jacobian"):
             raise NotImplementedError(
-                "Hermite interpolation needs gf.jacobian(e, x) returning the physical gradient."
+                "Hermite interpolation needs gf.jacobian(e, x) returning the "
+                "physical gradient."
             )
         dofs = numpy.zeros(len(self.mapper))
         for e in self.view.elements:
             self.bind(e)
             dofs[self.mapper(e)] = self._apply_dofs(
                 lambda xs: numpy.array([[float(gf(e, x))] for x in xs]),
-                lambda xs: numpy.array([numpy.asarray(gf.jacobian(e, x), dtype=float).reshape(1, 2) for x in xs]),
+                lambda xs: numpy.array(
+                    [
+                        numpy.asarray(gf.jacobian(e, x), dtype=float).reshape(1, 2)
+                        for x in xs
+                    ]
+                ),
                 self._edges,
             )[:, 0]
         return dofs

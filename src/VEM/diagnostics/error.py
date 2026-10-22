@@ -10,7 +10,7 @@ def error(view, u, uh, quad_order=5):
         for p in rules(e.type):
             hatx = p.position
             weight = p.weight * geometry.integrationElement(hatx)
-            l2 += (uh(e, hatx) - u(e, hatx))**2 * weight
+            l2 += (uh(e, hatx) - u(e, hatx)) ** 2 * weight
     return [numpy.sqrt(l2)]
 
 

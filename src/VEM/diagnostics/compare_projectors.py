@@ -1,8 +1,10 @@
 import numpy
 from dune.geometry import quadratureRule
 
-def compare_projectors(spaceA, spaceB, quad_order=8, print_per_element=False,
-                       compare_local_mass=True):
+
+def compare_projectors(
+    spaceA, spaceB, quad_order=8, print_per_element=False, compare_local_mass=True
+):
     """
     Compare two projector-based spaces on the same grid by evaluating their
     projected local basis vectors phi(xhat) = evaluateLocal(xhat) on each
@@ -37,10 +39,13 @@ def compare_projectors(spaceA, spaceB, quad_order=8, print_per_element=False,
         data.
     """
     if spaceA.localDofs != spaceB.localDofs:
-        raise ValueError(f"localDofs mismatch: {spaceA.localDofs} vs {spaceB.localDofs}")
+        raise ValueError(
+            f"localDofs mismatch: {spaceA.localDofs} vs {spaceB.localDofs}"
+        )
     if len(spaceA.mapper) != len(spaceB.mapper):
-        raise ValueError(f"global dof count mismatch: {len(spaceA.mapper)} vs"\
-                         f"{len(spaceB.mapper)}")
+        raise ValueError(
+            f"global dof count mismatch: {len(spaceA.mapper)} vs{len(spaceB.mapper)}"
+        )
 
     nloc = spaceA.localDofs
 
@@ -54,8 +59,8 @@ def compare_projectors(spaceA, spaceB, quad_order=8, print_per_element=False,
     col_A_sq = numpy.zeros(nloc, dtype=float)
     col_B_sq = numpy.zeros(nloc, dtype=float)
 
-    mass_diff_sq_sum = 0.0   # sum over elements of ||M_A^E - M_B^E||_F^2
-    mass_A_sq_sum = 0.0      # sum over elements of ||M_A^E||_F^2
+    mass_diff_sq_sum = 0.0 # sum over elements of ||M_A^E - M_B^E||_F^2
+    mass_A_sq_sum = 0.0    # sum over elements of ||M_A^E||_F^2
 
     element_stats = []
 
@@ -85,10 +90,8 @@ def compare_projectors(spaceA, spaceB, quad_order=8, print_per_element=False,
             w = float(p.weight * geo.integrationElement(xhat))
             earea += w
 
-            phiA = numpy.asarray(spaceA.evaluateLocal(xhat),
-                                 dtype=float).reshape(-1)
-            phiB = numpy.asarray(spaceB.evaluateLocal(xhat),
-                                 dtype=float).reshape(-1)
+            phiA = numpy.asarray(spaceA.evaluateLocal(xhat), dtype=float).reshape(-1)
+            phiB = numpy.asarray(spaceB.evaluateLocal(xhat), dtype=float).reshape(-1)
 
             if phiA.shape[0] != nloc or phiB.shape[0] != nloc:
                 raise ValueError(
@@ -146,13 +149,17 @@ def compare_projectors(spaceA, spaceB, quad_order=8, print_per_element=False,
         element_stats.append(estats)
 
         if print_per_element:
-            msg = (f"[elem {elem_id:4d}] "
-                   f"L2proj diff={estats['L2_fro_diff']:.3e} "
-                   f"(rel {estats['rel_to_A']:.3e}), "
-                   f"maxabs={estats['max_abs']:.3e}")
+            msg = (
+                f"[elem {elem_id:4d}] "
+                f"L2proj diff={estats['L2_fro_diff']:.3e} "
+                f"(rel {estats['rel_to_A']:.3e}), "
+                f"maxabs={estats['max_abs']:.3e}"
+            )
             if compare_local_mass:
-                msg += (f",  Mdiff={estats['local_mass_fro_diff']:.3e} "
-                        f"(rel {estats['local_mass_rel_to_A']:.3e})")
+                msg += (
+                    f",  Mdiff={estats['local_mass_fro_diff']:.3e} "
+                    f"(rel {estats['local_mass_rel_to_A']:.3e})"
+                )
             print(msg)
 
     # Global summaries
@@ -184,16 +191,16 @@ def compare_projectors(spaceA, spaceB, quad_order=8, print_per_element=False,
     if compare_local_mass:
         stats["global_local_mass_fro_diff_l2sum"] = numpy.sqrt(mass_diff_sq_sum)
         stats["global_local_mass_fro_A_l2sum"] = numpy.sqrt(mass_A_sq_sum)
-        stats["global_local_mass_rel_to_A_l2sum"] = (
-            stats["global_local_mass_fro_diff_l2sum"] /
-            max(stats["global_local_mass_fro_A_l2sum"], 1e-16)
-        )
+        stats["global_local_mass_rel_to_A_l2sum"] = stats[
+            "global_local_mass_fro_diff_l2sum"
+        ] / max(stats["global_local_mass_fro_A_l2sum"], 1e-16)
 
     # Pretty print summary
     print("\n=== Projector comparison summary ===")
     print(f"elements                : {stats['num_elements']}")
     print(f"local dofs              : {stats['local_dofs']}")
-    print(f"global dofs (A, B)      : {stats['num_global_dofs_A']}, {stats['num_global_dofs_B']}")
+    dofs_a, dofs_b = stats["num_global_dofs_A"], stats["num_global_dofs_B"]
+    print(f"global dofs (A, B)      : {dofs_a}, {dofs_b}")
     print(f"mesh area (quadrature)  : {stats['total_area']:.12g}")
     print(f"global ||PiA-PiB||      : {stats['global_L2_fro_diff']:.6e}")
     print(f"global ||PiA||          : {stats['global_L2_fro_A']:.6e}")
@@ -201,8 +208,12 @@ def compare_projectors(spaceA, spaceB, quad_order=8, print_per_element=False,
     print(f"global max abs diff     : {stats['global_max_abs']:.6e}")
 
     if compare_local_mass:
-        print(f"mass diff (l2-sum elems): {stats['global_local_mass_fro_diff_l2sum']:.6e}")
-        print(f"mass rel  (l2-sum elems): {stats['global_local_mass_rel_to_A_l2sum']:.6e}")
+        print(
+            f"mass diff (l2-sum elems): {stats['global_local_mass_fro_diff_l2sum']:.6e}"
+        )
+        print(
+            f"mass rel  (l2-sum elems): {stats['global_local_mass_rel_to_A_l2sum']:.6e}"
+        )
 
     print("per-local-basis relative L2 diff:")
     for i, r in enumerate(stats["per_local_basis_rel_to_A"]):

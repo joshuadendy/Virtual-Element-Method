@@ -1,23 +1,32 @@
+import time
 from functools import partial
-import numpy
+
 import matplotlib.pyplot as plt
+import numpy
 import scipy.sparse
 import scipy.sparse.linalg
-import time
-from dune.grid import cartesianDomain, gridFunction
-from VEM.assembly import assemble_l2_projection
-from VEM import compare_projectors, error, mesh_size, plot_eoc_curves
-from VEM import (
-    FEMSpace,
-    VEMSpace,
-)
 
 # Use a triangular grid for demo
 from dune.alugrid import aluConformGrid
+from dune.grid import cartesianDomain, gridFunction
+
+from VEM import (
+    FEMSpace,
+    VEMSpace,
+    compare_projectors,
+    error,
+    mesh_size,
+    plot_eoc_curves,
+)
+from VEM.assembly import assemble_l2_projection
 
 
 def run_projection_demo(
-    spaces={"hermite k=4 mapped VEM": partial(VEMSpace, order=4, element="hermite", mapped=True)},
+    spaces={
+        "hermite k=4 mapped VEM": partial(
+            VEMSpace, order=4, element="hermite", mapped=True
+        )
+    },
     refinements=3,
     plot=True,
     plot_true_solution=False,
@@ -82,10 +91,15 @@ def run_projection_demo(
             h = mesh_size(view)
 
             print(
-                "level ", level, ":",
-                "number of elements:", view.size(0),
-                "number of dofs:", len(space.mapper),
-                "mesh size h:", h,
+                "level ",
+                level,
+                ":",
+                "number of elements:",
+                view.size(0),
+                "number of dofs:",
+                len(space.mapper),
+                "mesh size h:",
+                h,
             )
 
             rhs, matrix = assemble_l2_projection(space, u, quad_order=quad_order)
@@ -115,8 +129,10 @@ def run_projection_demo(
             history.append({"h": h, "errors": err})
 
             if old_pde_error is not None:
-                eoc = [numpy.log(old_e / e) / numpy.log(2)
-                       for old_e, e in zip(old_pde_error, err)]
+                eoc = [
+                    numpy.log(old_e / e) / numpy.log(2)
+                    for old_e, e in zip(old_pde_error, err)
+                ]
             else:
                 eoc = None
             elapsed = time.perf_counter() - level_start
@@ -163,8 +179,9 @@ if __name__ == "__main__":
                 for element, k in SPACES
             },
             **{
-                f"{element} k={k} {'mapped' if mapped else 'physical'} VEM":
-                    partial(VEMSpace, order=k, element=element, mapped=mapped)
+                f"{element} k={k} {'mapped' if mapped else 'physical'} VEM": partial(
+                    VEMSpace, order=k, element=element, mapped=mapped
+                )
                 for element, k in SPACES
                 for mapped in (False, True)
             },

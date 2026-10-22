@@ -16,3 +16,10 @@ dependencies = [
   "cmake",
   "matplotlib",
 ]
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I"]
+# Single-letter matrix names (I, l) follow the mathematical notation.
+ignore = ["E741"]

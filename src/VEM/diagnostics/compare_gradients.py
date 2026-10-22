@@ -12,7 +12,9 @@ def compare_gradient_projectors(spaceA, spaceB, quad_order=8, print_per_element=
       - max pointwise absolute discrepancy
     """
     if spaceA.localDofs != spaceB.localDofs:
-        raise ValueError(f"localDofs mismatch: {spaceA.localDofs} vs {spaceB.localDofs}")
+        raise ValueError(
+            f"localDofs mismatch: {spaceA.localDofs} vs {spaceB.localDofs}"
+        )
     if len(spaceA.mapper) != len(spaceB.mapper):
         raise ValueError(
             f"global dof count mismatch: {len(spaceA.mapper)} vs {len(spaceB.mapper)}"
@@ -83,7 +85,8 @@ def compare_gradient_projectors(spaceA, spaceB, quad_order=8, print_per_element=
         "total_area": total_area,
         "global_L2_fro_diff": numpy.sqrt(total_diff_sq),
         "global_L2_fro_A": numpy.sqrt(total_A_sq),
-        "global_rel_to_A": numpy.sqrt(total_diff_sq) / max(numpy.sqrt(total_A_sq), 1e-16),
+        "global_rel_to_A": numpy.sqrt(total_diff_sq)
+        / max(numpy.sqrt(total_A_sq), 1e-16),
         "global_max_abs": global_max_abs,
         "element_stats": element_stats,
     }

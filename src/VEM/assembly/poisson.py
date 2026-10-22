@@ -3,7 +3,9 @@ import scipy.sparse
 from dune.geometry import quadratureRule
 
 
-def assemble_poisson(space, force, quad_order=6, stabilisation="auto", stabilisation_scale=1.0):
+def assemble_poisson(
+    space, force, quad_order=6, stabilisation="auto", stabilisation_scale=1.0
+):
     """
     Assemble a projected Poisson/Laplace operator using the space's local value
     projector and local projected gradients.
@@ -30,7 +32,7 @@ def assemble_poisson(space, force, quad_order=6, stabilisation="auto", stabilisa
     rhs = numpy.zeros(len(space.mapper), dtype=float)
 
     local_entries = space.localDofs
-    global_entries = local_entries ** 2 * space.view.size(0)
+    global_entries = local_entries**2 * space.view.size(0)
 
     value = numpy.zeros(global_entries, dtype=float)
     row_index = numpy.zeros(global_entries, dtype=int)
@@ -70,7 +72,7 @@ def assemble_poisson(space, force, quad_order=6, stabilisation="auto", stabilisa
                 value[entry] = local_matrix[i, j]
                 row_index[entry] = indices[i]
                 col_index[entry] = indices[j]
-        start += local_entries ** 2
+        start += local_entries**2
 
     matrix = scipy.sparse.csr_matrix(
         (value, (row_index, col_index)),

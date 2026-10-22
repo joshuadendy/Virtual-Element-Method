@@ -158,10 +158,14 @@ The demos take a dictionary of named space factories, for example:
 ```python
 from functools import partial
 
-run_poisson_demo(spaces={
-    "hermite k=4 FEM": partial(FEMSpace, order=4, element="hermite"),
-    "hermite k=4 mapped VEM": partial(VEMSpace, order=4, element="hermite", mapped=True),
-})
+run_poisson_demo(
+    spaces={
+        "hermite k=4 FEM": partial(FEMSpace, order=4, element="hermite"),
+        "hermite k=4 mapped VEM": partial(
+            VEMSpace, order=4, element="hermite", mapped=True
+        ),
+    }
+)
 ```
 
 ## Notes

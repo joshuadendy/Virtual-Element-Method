@@ -1,11 +1,13 @@
 import numpy
-from dune.geometry import quadratureRule
 import scipy.sparse
+from dune.geometry import quadratureRule
 
 from .poisson import _build_local_stabilisation
 
 
-def assemble_l2_projection(space, force, quad_order, stabilisation="none", stabilisation_scale=1.0):
+def assemble_l2_projection(
+    space, force, quad_order, stabilisation="none", stabilisation_scale=1.0
+):
     """
     Assemble the global mass matrix and right-hand side for a space.
 

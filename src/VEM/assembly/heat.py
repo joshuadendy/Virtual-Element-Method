@@ -2,11 +2,14 @@ import numpy
 import scipy.sparse.linalg
 
 
-def solve_heat(mass, stiffness, u0, load, dirichlet, dirichlet_ids, dt, steps, theta=0.5):
+def solve_heat(
+    mass, stiffness, u0, load, dirichlet, dirichlet_ids, dt, steps, theta=0.5
+):
     """
     Theta-scheme for M u' + A u = F(t) with u = g(t) on dirichlet_ids:
 
-      (M + theta dt A) u^{n+1} = (M - (1 - theta) dt A) u^n + dt (theta F^{n+1} + (1 - theta) F^n).
+      (M + theta dt A) u^{n+1}
+          = (M - (1 - theta) dt A) u^n + dt (theta F^{n+1} + (1 - theta) F^n).
 
     load(t) returns F(t) and dirichlet(t) the values g(t). theta=1 is backward
     Euler and theta=1/2 Crank-Nicolson. The free-dof block is factorised once

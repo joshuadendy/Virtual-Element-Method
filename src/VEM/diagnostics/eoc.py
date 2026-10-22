@@ -1,6 +1,6 @@
-import numpy
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FixedLocator, FixedFormatter, NullLocator
+import numpy
+from matplotlib.ticker import FixedFormatter, FixedLocator, NullLocator
 
 from ..spaces.common.triangle_geometry import coerce_triangle_vertices
 

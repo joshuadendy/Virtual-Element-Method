@@ -5,7 +5,9 @@ import numpy
 from .triangle_geometry import coerce_triangle_vertices
 
 
-def build_vertex_effective_h(view, mapper, value_dof_offsets=(0, 3, 6), measure="diameter"):
+def build_vertex_effective_h(
+    view, mapper, value_dof_offsets=(0, 3, 6), measure="diameter"
+):
     """
     Average a characteristic element length onto the global vertex-value dofs.
 
@@ -26,11 +28,14 @@ def build_vertex_effective_h(view, mapper, value_dof_offsets=(0, 3, 6), measure=
         if measure == "diameter":
             local_h = numpy.array([max(e01, e12, e20)] * 3, dtype=float)
         elif measure == "adjacent_edge_average":
-            local_h = numpy.array([
-                0.5 * (e01 + e20),
-                0.5 * (e01 + e12),
-                0.5 * (e12 + e20),
-            ], dtype=float)
+            local_h = numpy.array(
+                [
+                    0.5 * (e01 + e20),
+                    0.5 * (e01 + e12),
+                    0.5 * (e12 + e20),
+                ],
+                dtype=float,
+            )
         else:
             raise ValueError(f"Unknown measure '{measure}'.")
 
